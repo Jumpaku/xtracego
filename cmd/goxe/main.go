@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Jumpaku/goxe"
 	"golang.org/x/sync/errgroup"
@@ -30,8 +34,6 @@ func (h cliHandler) Run(input Input) error {
 }
 
 func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
-	ctx := context.Background()
-
 	resolveType, packageArgs, _, err := goxe.ParseArgs(input.Arg_Package)
 	if err != nil {
 		return fmt.Errorf("failed to parse args: %w", err)
@@ -52,7 +54,8 @@ func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 	}
 	fmt.Printf("resolved package: %+v\n", pkg)
 
-	if err := transformSourceFiles(ctx, pkg, outDir); err != nil {
+	prefix := genPrefix(time.Now().Unix())
+	if err := transformSourceFiles(prefix, pkg, outDir); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
@@ -60,8 +63,57 @@ func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 }
 
 func (h cliHandler) Run_Build(input Input_Build) error {
-	//TODO implement me
-	panic("implement me")
+	resolveType, packageArgs, _, err := goxe.ParseArgs(input.Arg_Package)
+	if err != nil {
+		return fmt.Errorf("failed to parse args: %w", err)
+	}
+
+	outDir, err := os.MkdirTemp("", "goxe_*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(outDir)
+
+	pkg, err := goxe.ResolvePackage(resolveType, packageArgs)
+	if err != nil {
+		return fmt.Errorf("failed to resolve package: %w", err)
+	}
+	fmt.Printf("resolved package: %+v\n", pkg)
+
+	prefix := genPrefix(time.Now().Unix())
+	if err := transformSourceFiles(prefix, pkg, outDir); err != nil {
+		return fmt.Errorf("failed to clone source files: %w", err)
+	}
+
+	{
+		cmd := exec.Command("go", "mod", "download")
+		cmd.Dir, cmd.Stdout, cmd.Stderr = outDir, os.Stdout, os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to run go build: %w", err)
+		}
+	}
+	{
+		cmd := exec.Command("go", "get", "github.com/davecgh/go-spew/spew")
+		cmd.Dir, cmd.Stdout, cmd.Stderr = outDir, os.Stdout, os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to run go build: %w", err)
+		}
+	}
+	{
+		p := regexp.MustCompile(`\s+`)
+		args := []string{"build"}
+		args = append(args, p.Split(input.Opt_GoBuildArgs, -1)...)
+		args = append(args, input.Arg_Package...)
+		cmd := exec.Command("go", args...)
+		cmd.Dir, cmd.Stdout, cmd.Stderr = outDir, os.Stdout, os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to run go build: %w", err)
+		}
+	}
+	{
+
+	}
+	return nil
 }
 
 func (h cliHandler) Run_Run(input Input_Run) error {
@@ -69,12 +121,13 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	panic("implement me")
 }
 
-func transformSourceFiles(ctx context.Context, pkg goxe.ResolvedPackageFiles, outDir string) error {
+func transformSourceFiles(prefix string, pkg goxe.ResolvedPackageFiles, outDir string) error {
 	srcDir, sourceFiles := pkg.PackageDir, append([]string{}, pkg.SourceFiles...)
 	if pkg.GoModFile != "" {
 		srcDir, sourceFiles = filepath.Dir(pkg.GoModFile), append(sourceFiles, pkg.GoModFile)
 	}
 
+	ctx := context.Background()
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, srcFile := range sourceFiles {
 		eg.Go(func() error {
@@ -87,7 +140,7 @@ func transformSourceFiles(ctx context.Context, pkg goxe.ResolvedPackageFiles, ou
 
 			err = goxe.TransformFile(srcFile, dstFile, func(r io.Reader, w io.Writer) (err error) {
 				if strings.HasSuffix(srcFile, ".go") {
-					if err = goxe.ProcessCode(srcFile, w, r); err != nil {
+					if err = goxe.ProcessCode(prefix, srcFile, w, r); err != nil {
 						return fmt.Errorf("failed to copy file: %w", err)
 					}
 				} else {
@@ -111,4 +164,15 @@ func transformSourceFiles(ctx context.Context, pkg goxe.ResolvedPackageFiles, ou
 	}
 
 	return nil
+}
+
+var alphabet = "abcdefghijklmnopqrstuvwxyz"
+
+func genPrefix(seed int64) string {
+	r := rand.New(rand.NewSource(seed))
+	v := []byte{}
+	for i := 0; i < 8; i++ {
+		v = append(v, alphabet[r.Intn(len(alphabet))])
+	}
+	return "goxe_" + string(v)
 }

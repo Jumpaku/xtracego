@@ -17,7 +17,11 @@ subcommands:
 
   build:
     options:
-      -go-build-flags: {}
+      -go-build-args:
+        short: -a
+        description: |
+          Arguments to be passed to the go build command.
+          If not specified, the default arguments are used.
     arguments:
       - name: package
         variadic: true
@@ -26,7 +30,7 @@ subcommands:
 
   run:
     options:
-      -go-run-flags: {}
+      -go-run-args: {}
     arguments:
       - name: package_and_arguments
         variadic: true

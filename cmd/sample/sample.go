@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 const _ = iota
 
 const (
@@ -26,4 +28,17 @@ func sample() {
 	v := 1
 	var u = 2
 	u, v = v, u
+}
+
+type T struct{}
+
+func (t T) method() {
+	fmt.Println("hello")
+	s := []int{}
+	for i := 0; i < 5; i++ {
+		s = append(s, i)
+	}
+	for k, v := range s {
+		fmt.Println(k, v)
+	}
 }

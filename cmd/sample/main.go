@@ -13,6 +13,8 @@ import (
 )
 
 func main() {
+	sample()
+	T{}.method()
 	sepFlag := flag.String("F", "", "field separator (default: runs of whitespace)")
 	printNR := flag.Bool("n", false, "print record number (NR)")
 	printNF := flag.Bool("N", false, "print number of fields (NF)")

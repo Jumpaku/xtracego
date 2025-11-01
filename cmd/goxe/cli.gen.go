@@ -70,17 +70,17 @@ func (input *Input) resolveInput(subcommand, options, arguments []string) {
 }
 
 type Input_Build struct {
-	Opt_GoBuildFlags string
-	Arg_Package      []string
-	Subcommand       []string
-	Options          []string
-	Arguments        []string
+	Opt_GoBuildArgs string
+	Arg_Package     []string
+	Subcommand      []string
+	Options         []string
+	Arguments       []string
 
 	ErrorMessage string
 }
 
 func (input *Input_Build) resolveInput(subcommand, options, arguments []string) {
-	*input = Input_Build{Opt_GoBuildFlags: "",
+	*input = Input_Build{Opt_GoBuildArgs: "",
 		Subcommand: subcommand,
 		Options:    options,
 		Arguments:  arguments,
@@ -91,7 +91,7 @@ func (input *Input_Build) resolveInput(subcommand, options, arguments []string) 
 		func(...any) {}(optName, lit, cut)
 
 		switch optName {
-		case "-go-build-flags":
+		case "-go-build-args", "-a":
 			if !cut {
 				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
 				return
@@ -100,7 +100,7 @@ func (input *Input_Build) resolveInput(subcommand, options, arguments []string) 
 				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
 				return
 			} else {
-				input.Opt_GoBuildFlags = v.(string)
+				input.Opt_GoBuildArgs = v.(string)
 			}
 
 		default:
@@ -180,7 +180,7 @@ func (input *Input_Rewrite) resolveInput(subcommand, options, arguments []string
 }
 
 type Input_Run struct {
-	Opt_GoRunFlags          string
+	Opt_GoRunArgs           string
 	Arg_PackageAndArguments []string
 	Subcommand              []string
 	Options                 []string
@@ -190,7 +190,7 @@ type Input_Run struct {
 }
 
 func (input *Input_Run) resolveInput(subcommand, options, arguments []string) {
-	*input = Input_Run{Opt_GoRunFlags: "",
+	*input = Input_Run{Opt_GoRunArgs: "",
 		Subcommand: subcommand,
 		Options:    options,
 		Arguments:  arguments,
@@ -201,7 +201,7 @@ func (input *Input_Run) resolveInput(subcommand, options, arguments []string) {
 		func(...any) {}(optName, lit, cut)
 
 		switch optName {
-		case "-go-run-flags":
+		case "-go-run-args":
 			if !cut {
 				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
 				return
@@ -210,7 +210,7 @@ func (input *Input_Run) resolveInput(subcommand, options, arguments []string) {
 				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
 				return
 			} else {
-				input.Opt_GoRunFlags = v.(string)
+				input.Opt_GoRunArgs = v.(string)
 			}
 
 		default:
@@ -335,13 +335,13 @@ func GetDoc(subcommands []string) string {
 		return "goxe \n\n    Syntax:\n        $ goxe \n\n    Subcommands:\n        build:\n\n        rewrite:\n\n        run:\n\n\n"
 
 	case "build":
-		return "goxe build\n\n    Syntax:\n        $ goxe build [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -go-build-flags=<string>  (default=\"\"):\n\n    Arguments:\n        1. [<package:string>]...\n            Path to a local directory of the main package or paths to source files in the package to be rewritten.\n\n\n"
+		return "goxe build\n\n    Syntax:\n        $ goxe build [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -go-build-args=<string>, -a=<string>  (default=\"\"):\n            Arguments to be passed to the go build command.\n            If not specified, the default arguments are used.\n\n    Arguments:\n        1. [<package:string>]...\n            Path to a local directory of the main package or paths to source files in the package to be rewritten.\n\n\n"
 
 	case "rewrite":
 		return "goxe rewrite\n\n    Syntax:\n        $ goxe rewrite [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -output-directory=<string>, -o=<string>  (default=\"\"):\n            Output directory to place the rewritten source files of the package.\n            If not specified, the files are placed at a temporary directory.\n\n    Arguments:\n        1. [<package:string>]...\n            Path to a local directory of the main package or paths to source files in the package to be rewritten.\n\n\n"
 
 	case "run":
-		return "goxe run\n\n    Syntax:\n        $ goxe run [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -go-run-flags=<string>  (default=\"\"):\n\n    Arguments:\n        1. [<package_and_arguments:string>]...\n            Path to a local directory of the main package or paths to source files in the package to be rewritten, followed by arguments to be passed to the main function.\n            If a local directory is given as the first argument, the rest of the arguments is treated as arguments to the main function.\n            If source files, each of which ends with '.go', are given as the first arguments, the rest of the arguments is treated as arguments to the main function.\n            Arguments after the first '--' are treated as arguments to the main function.\n            * Example 1:\n              goxe run /path/to/main/package arg1 arg2 --> package=/path/to/main/package, arguments=[arg1, arg2]\n            * Example 2:\n              goxe run ./path/to/main/package arg1 arg2 --> package=./path/to/main/package, arguments=[arg1, arg2]\n            * Example 3:\n              goxe run ./path/to/main/package -- arg1 arg2 --> package=./path/to/main/package, arguments=[arg1, arg2]\n            * Example 4:\n              goxe run ./source.go ./files.go ./arg.go arg1 arg2 --> package=[./source.go, ./files.go, ./arg.go], arguments=[arg1, arg2] \n            * Example 5:\n              goxe run ./source.go ./files.go -- ./arg.go arg1 arg2 --> package=[./source.go, ./files.go], arguments=[./arg.go, arg1, arg2] \n\n\n"
+		return "goxe run\n\n    Syntax:\n        $ goxe run [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -go-run-args=<string>  (default=\"\"):\n\n    Arguments:\n        1. [<package_and_arguments:string>]...\n            Path to a local directory of the main package or paths to source files in the package to be rewritten, followed by arguments to be passed to the main function.\n            If a local directory is given as the first argument, the rest of the arguments is treated as arguments to the main function.\n            If source files, each of which ends with '.go', are given as the first arguments, the rest of the arguments is treated as arguments to the main function.\n            Arguments after the first '--' are treated as arguments to the main function.\n            * Example 1:\n              goxe run /path/to/main/package arg1 arg2 --> package=/path/to/main/package, arguments=[arg1, arg2]\n            * Example 2:\n              goxe run ./path/to/main/package arg1 arg2 --> package=./path/to/main/package, arguments=[arg1, arg2]\n            * Example 3:\n              goxe run ./path/to/main/package -- arg1 arg2 --> package=./path/to/main/package, arguments=[arg1, arg2]\n            * Example 4:\n              goxe run ./source.go ./files.go ./arg.go arg1 arg2 --> package=[./source.go, ./files.go, ./arg.go], arguments=[arg1, arg2] \n            * Example 5:\n              goxe run ./source.go ./files.go -- ./arg.go arg1 arg2 --> package=[./source.go, ./files.go], arguments=[./arg.go, arg1, arg2] \n\n\n"
 	default:
 		panic(fmt.Sprintf(`invalid subcommands: %v`, subcommands))
 	}

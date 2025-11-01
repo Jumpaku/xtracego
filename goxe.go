@@ -12,7 +12,7 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func ProcessCode(filename string, dst io.Writer, src io.Reader) (err error) {
+func ProcessCode(prefix, filename string, dst io.Writer, src io.Reader) (err error) {
 	buf := bytes.NewBuffer(nil)
 	if _, err := io.Copy(buf, src); err != nil {
 		return fmt.Errorf("failed to copy: %w", err)
@@ -20,15 +20,58 @@ func ProcessCode(filename string, dst io.Writer, src io.Reader) (err error) {
 	src, srcBytes := buf, buf.Bytes()
 
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, filename, src, 0 /*parser.ParseComments*/)
+	f, err := parser.ParseFile(fset, filename, src, parser.SkipObjectResolution)
 	if err != nil {
 		return fmt.Errorf("failed to parse: %w", err)
 	}
 
-	astutil.AddImport(fset, f, "log")
-	astutil.AddImport(fset, f, "fmt")
+	astutil.AddNamedImport(fset, f, prefix+"_log", "log")
+	astutil.AddNamedImport(fset, f, prefix+"_fmt", "fmt")
 
-	s := LogInsert{fset: fset, src: srcBytes, lineWidth: 80}
+	s := LogInsert{fset: fset, src: srcBytes, lineWidth: 80, prefix: prefix}
+
+	stmtParent := map[ast.Stmt]ast.Node{}
+	ast.PreorderStack(f, nil, func(n ast.Node, s []ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.FuncDecl:
+			if node.Body != nil && len(node.Body.List) > 0 {
+				stmtParent[node.Body.List[0]] = node
+			}
+		case *ast.ForStmt:
+			if node.Body != nil && len(node.Body.List) > 0 {
+				stmtParent[node.Body.List[0]] = node
+			}
+		case *ast.RangeStmt:
+			if node.Body != nil && len(node.Body.List) > 0 {
+				stmtParent[node.Body.List[0]] = node
+			}
+		case *ast.SwitchStmt:
+			if node.Body != nil && len(node.Body.List) > 0 {
+				for _, stmt := range node.Body.List {
+					if clause, ok := stmt.(*ast.CaseClause); ok {
+						stmtParent[clause] = node
+					}
+				}
+			}
+		case *ast.TypeSwitchStmt:
+			if node.Body != nil && len(node.Body.List) > 0 {
+				for _, stmt := range node.Body.List {
+					if clause, ok := stmt.(*ast.CaseClause); ok {
+						stmtParent[clause] = node
+					}
+				}
+			}
+		case *ast.SelectStmt:
+			if node.Body != nil && len(node.Body.List) > 0 {
+				for _, stmt := range node.Body.List {
+					if clause, ok := stmt.(*ast.CaseClause); ok {
+						stmtParent[clause] = node
+					}
+				}
+			}
+		}
+		return true
+	})
 
 	astutil.Apply(f, nil, func(c *astutil.Cursor) bool {
 		switch node := c.Node().(type) {
@@ -43,41 +86,61 @@ func ProcessCode(filename string, dst io.Writer, src io.Reader) (err error) {
 				s.logFileStatement(c, node)
 				s.logFileConstant(c, node)
 			}
-		case *ast.BlockStmt, *ast.EmptyStmt:
-			// do nothing
-		case *ast.DeclStmt:
-			if decl, ok := node.Decl.(*ast.GenDecl); ok && decl.Tok == token.VAR {
-				s.logLocalStatement(c, node)
-				s.logLocalVariable(c, node)
-			}
-		case *ast.AssignStmt:
-			if node.Tok == token.ASSIGN {
-				s.logLocalStatement(c, node)
-				s.logLocalAssignment(c, node)
-			}
-			if _, ok := c.Parent().(*ast.BlockStmt); ok && node.Tok == token.DEFINE {
-				s.logLocalStatement(c, node)
-				s.logLocalAssignment(c, node)
-			}
+		// do nothing
 		case ast.Stmt:
-			s.logLocalStatement(c, node)
-		case *ast.ExprStmt:
-		case *ast.IfStmt:
-		case *ast.SwitchStmt:
-		case *ast.TypeSwitchStmt:
-		case *ast.CaseClause:
-		case *ast.SelectStmt:
-		case *ast.CommClause:
-		case *ast.ForStmt:
-		case *ast.RangeStmt:
-		case *ast.ReturnStmt:
-		case *ast.DeferStmt:
-		case *ast.GoStmt:
-		case *ast.BranchStmt:
-		case *ast.LabeledStmt:
-		case *ast.SendStmt:
-		case *ast.IncDecStmt:
+			{
+				if parent, ok := stmtParent[node]; ok {
+					switch parent := parent.(type) {
+					case *ast.FuncDecl:
+						s.logCall(c, parent)
+					case *ast.ForStmt:
+						s.logForInit(c, parent)
+					case *ast.RangeStmt:
+						s.logRangeKeyVal(c, parent)
+					case *ast.SwitchStmt:
+					case *ast.TypeSwitchStmt:
+					case *ast.SelectStmt:
+					}
+				}
+			}
+
+			if _, ok := c.Parent().(*ast.BlockStmt); ok {
+				s.logLocalStatement(c, node)
+			}
+
+			switch node := node.(type) {
+			case *ast.EmptyStmt:
+			case *ast.BlockStmt:
+			case *ast.DeclStmt:
+				if decl, ok := node.Decl.(*ast.GenDecl); ok && decl.Tok == token.VAR {
+					s.logLocalVariable(c, node)
+				}
+			case *ast.AssignStmt:
+				if node.Tok == token.ASSIGN {
+					s.logLocalAssignment(c, node)
+				}
+				if _, ok := c.Parent().(*ast.BlockStmt); ok && node.Tok == token.DEFINE {
+					s.logLocalAssignment(c, node)
+				}
+			case *ast.ExprStmt:
+			case *ast.IfStmt:
+			case *ast.SwitchStmt:
+			case *ast.TypeSwitchStmt:
+			case *ast.CaseClause:
+			case *ast.SelectStmt:
+			case *ast.CommClause:
+			case *ast.ForStmt:
+			case *ast.RangeStmt:
+			case *ast.ReturnStmt:
+			case *ast.DeferStmt:
+			case *ast.GoStmt:
+			case *ast.BranchStmt:
+			case *ast.LabeledStmt:
+			case *ast.SendStmt:
+			case *ast.IncDecStmt:
+			}
 		}
+
 		return true
 	})
 
