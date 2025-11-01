@@ -26,6 +26,10 @@ type ResolvedPackageFiles struct {
 	PackageDir  string
 }
 
+func (pkg ResolvedPackageFiles) IsModule() bool {
+	return pkg.GoModFile != ""
+}
+
 func ParseArgs(packageAndArguments []string) (resolveType ResolveType, packageArgs []string, cliArgs []string, err error) {
 	if len(packageAndArguments) == 0 {
 		return ResolveTypeUnspecified, nil, nil, fmt.Errorf("no package specified")
@@ -73,16 +77,16 @@ func ResolvePackage(resolveType ResolveType, packageArgs []string) (resolved Res
 			if err != nil {
 				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve %q: %w", packageArgs[0], err)
 			}
-			goModPath, found, err := findGoMod(filepath.Dir(file))
+			goModPath, goModPathFound, err := findGoMod(filepath.Dir(file))
 			if err != nil {
 				return ResolvedPackageFiles{}, fmt.Errorf("failed to find go.mod: %w", err)
 			}
 			sourceFiles, err := resolveSourceFiles(packageArgs)
 			if err != nil {
-				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve source files: %w", err)
+				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve LogInsert files: %w", err)
 			}
 			resolved := ResolvedPackageFiles{ResolveType: resolveType, SourceFiles: sourceFiles, PackageDir: filepath.Dir(file)}
-			if found {
+			if goModPathFound {
 				resolved.GoModFile = goModPath
 			}
 			return resolved, nil
@@ -99,7 +103,7 @@ func ResolvePackage(resolveType ResolveType, packageArgs []string) (resolved Res
 			}
 			sourceFiles, err := resolveSourceFiles(packageArgs)
 			if err != nil {
-				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve source files: %w", err)
+				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve LogInsert files: %w", err)
 			}
 			resolved := ResolvedPackageFiles{ResolveType: resolveType, SourceFiles: sourceFiles, PackageDir: packageDir}
 			if found {

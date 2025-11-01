@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Jumpaku/goxe"
 	"golang.org/x/sync/errgroup"
@@ -36,11 +37,6 @@ func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 		return fmt.Errorf("failed to parse args: %w", err)
 	}
 
-	pkg, err := goxe.ResolvePackage(resolveType, packageArgs)
-	if err != nil {
-		return fmt.Errorf("failed to resolve package: %w", err)
-	}
-
 	outDir := input.Opt_OutputDirectory
 	if outDir == "" {
 		outDir, err = os.MkdirTemp("", "goxe_*")
@@ -50,7 +46,13 @@ func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 		defer os.RemoveAll(outDir)
 	}
 
-	if err := cloneSourceFiles(ctx, pkg, outDir); err != nil {
+	pkg, err := goxe.ResolvePackage(resolveType, packageArgs)
+	if err != nil {
+		return fmt.Errorf("failed to resolve package: %w", err)
+	}
+	fmt.Printf("resolved package: %+v\n", pkg)
+
+	if err := transformSourceFiles(ctx, pkg, outDir); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
@@ -67,15 +69,16 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	panic("implement me")
 }
 
-func cloneSourceFiles(ctx context.Context, pkg goxe.ResolvedPackageFiles, outDir string) error {
+func transformSourceFiles(ctx context.Context, pkg goxe.ResolvedPackageFiles, outDir string) error {
 	srcDir, sourceFiles := pkg.PackageDir, append([]string{}, pkg.SourceFiles...)
 	if pkg.GoModFile != "" {
 		srcDir, sourceFiles = filepath.Dir(pkg.GoModFile), append(sourceFiles, pkg.GoModFile)
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
-	for _, srcFile := range pkg.SourceFiles {
+	for _, srcFile := range sourceFiles {
 		eg.Go(func() error {
+			fmt.Println(srcFile)
 			relToFile, err := filepath.Rel(srcDir, srcFile)
 			if err != nil {
 				return fmt.Errorf("failed to get relative path: %w", err)
@@ -83,9 +86,17 @@ func cloneSourceFiles(ctx context.Context, pkg goxe.ResolvedPackageFiles, outDir
 			dstFile := filepath.Join(outDir, relToFile)
 
 			err = goxe.TransformFile(srcFile, dstFile, func(r io.Reader, w io.Writer) (err error) {
-				if _, err = io.Copy(w, r); err != nil {
-					return fmt.Errorf("failed to copy file: %w", err)
+				if strings.HasSuffix(srcFile, ".go") {
+					if err = goxe.ProcessCode(srcFile, w, r); err != nil {
+						return fmt.Errorf("failed to copy file: %w", err)
+					}
+				} else {
+					_, err = io.Copy(w, r)
+					if err != nil {
+						return fmt.Errorf("failed to copy file: %w", err)
+					}
 				}
+
 				return nil
 			})
 			if err != nil {

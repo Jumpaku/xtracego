@@ -1,50 +1,89 @@
 package goxe
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
-	"log"
+	"io"
+
+	"golang.org/x/tools/go/ast/astutil"
 )
 
-func ProcessCode(src []byte) {
+func ProcessCode(filename string, dst io.Writer, src io.Reader) (err error) {
+	buf := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buf, src); err != nil {
+		return fmt.Errorf("failed to copy: %w", err)
+	}
+	src, srcBytes := buf, buf.Bytes()
+
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "src.go", src, 0)
+	f, err := parser.ParseFile(fset, filename, src, 0 /*parser.ParseComments*/)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to parse: %w", err)
 	}
 
-	ast.PreorderStack(f, nil, func(n ast.Node, stack []ast.Node) bool {
-		// (A) 現在のノードが *ast.Ident (識別子) でなければ、
-		// 子ノードの走査を続ける (true)
-		ident, ok := n.(*ast.Ident)
-		if !ok {
-			return true
-		}
+	astutil.AddImport(fset, f, "log")
+	astutil.AddImport(fset, f, "fmt")
 
-		// (B) スタックを逆順 (深い方から浅い方へ) に調べる
-		inMainFunc := false
-		for i := len(stack) - 1; i >= 0; i-- {
-			// スタック内のノードが *ast.FuncDecl (関数宣言) かチェック
-			if fn, ok := stack[i].(*ast.FuncDecl); ok {
-				// 関数名が 'main' ならフラグを立てる
-				if fn.Name.Name == "main" {
-					inMainFunc = true
+	s := LogInsert{fset: fset, src: srcBytes, lineWidth: 80}
+
+	astutil.Apply(f, nil, func(c *astutil.Cursor) bool {
+		switch node := c.Node().(type) {
+		case *ast.GenDecl:
+			switch node.Tok {
+			case token.VAR:
+				if _, isFile := c.Parent().(*ast.File); isFile {
+					s.logFileStatement(c, node)
+					s.logFileVariable(c, node)
 				}
-				// 一番近い関数スコープを見つけたらループを抜ける
-				break
+			case token.CONST:
+				s.logFileStatement(c, node)
+				s.logFileConstant(c, node)
 			}
+		case *ast.BlockStmt, *ast.EmptyStmt:
+			// do nothing
+		case *ast.DeclStmt:
+			if decl, ok := node.Decl.(*ast.GenDecl); ok && decl.Tok == token.VAR {
+				s.logLocalStatement(c, node)
+				s.logLocalVariable(c, node)
+			}
+		case *ast.AssignStmt:
+			if node.Tok == token.ASSIGN {
+				s.logLocalStatement(c, node)
+				s.logLocalAssignment(c, node)
+			}
+			if _, ok := c.Parent().(*ast.BlockStmt); ok && node.Tok == token.DEFINE {
+				s.logLocalStatement(c, node)
+				s.logLocalAssignment(c, node)
+			}
+		case ast.Stmt:
+			s.logLocalStatement(c, node)
+		case *ast.ExprStmt:
+		case *ast.IfStmt:
+		case *ast.SwitchStmt:
+		case *ast.TypeSwitchStmt:
+		case *ast.CaseClause:
+		case *ast.SelectStmt:
+		case *ast.CommClause:
+		case *ast.ForStmt:
+		case *ast.RangeStmt:
+		case *ast.ReturnStmt:
+		case *ast.DeferStmt:
+		case *ast.GoStmt:
+		case *ast.BranchStmt:
+		case *ast.LabeledStmt:
+		case *ast.SendStmt:
+		case *ast.IncDecStmt:
 		}
-
-		// (C) 'main' 関数内にいた場合のみ、識別子名を出力
-		if inMainFunc {
-			fmt.Printf("Found: %s (at %s)\n", ident.Name, fset.Position(ident.Pos()))
-		}
-
-		// Identノードは子を持たないので true/false どちらでも大差ないが、
-		// 一般的には子ノードの走査を続けるため true を返す
 		return true
 	})
 
+	if err := printer.Fprint(dst, fset, f); err != nil {
+		return fmt.Errorf("failed to print: %w", err)
+	}
+
+	return nil
 }
