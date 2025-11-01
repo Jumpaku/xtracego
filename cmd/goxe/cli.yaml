@@ -1,0 +1,48 @@
+#$schema: https://raw.githubusercontent.com/Jumpaku/cyamli/refs/heads/main/v2/schema/cyamli-cli.schema.json
+name: goxe
+subcommands:
+
+  rewrite:
+    options:
+      -output-directory:
+        short: -o
+        description: |
+          Output directory to place the rewritten source files of the package.
+          If not specified, the files are placed at a temporary directory.
+    arguments:
+      - name: package
+        variadic: true
+        description: |
+          Path to a local directory of the main package or paths to source files in the package to be rewritten.
+
+  build:
+    options:
+      -go-build-flags: {}
+    arguments:
+      - name: package
+        variadic: true
+        description: |
+          Path to a local directory of the main package or paths to source files in the package to be rewritten.
+
+  run:
+    options:
+      -go-run-flags: {}
+    arguments:
+      - name: package_and_arguments
+        variadic: true
+        description: |
+          Path to a local directory of the main package or paths to source files in the package to be rewritten, followed by arguments to be passed to the main function.
+          If a local directory is given as the first argument, the rest of the arguments is treated as arguments to the main function.
+          If source files, each of which ends with '.go', are given as the first arguments, the rest of the arguments is treated as arguments to the main function.
+          Arguments after the first '--' are treated as arguments to the main function.
+          * Example 1:
+            goxe run /path/to/main/package arg1 arg2 --> package=/path/to/main/package, arguments=[arg1, arg2]
+          * Example 2:
+            goxe run ./path/to/main/package arg1 arg2 --> package=./path/to/main/package, arguments=[arg1, arg2]
+          * Example 3:
+            goxe run ./path/to/main/package -- arg1 arg2 --> package=./path/to/main/package, arguments=[arg1, arg2]
+          * Example 4:
+            goxe run ./source.go ./files.go ./arg.go arg1 arg2 --> package=[./source.go, ./files.go, ./arg.go], arguments=[arg1, arg2] 
+          * Example 5:
+            goxe run ./source.go ./files.go -- ./arg.go arg1 arg2 --> package=[./source.go, ./files.go], arguments=[./arg.go, arg1, arg2] 
+          
