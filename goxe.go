@@ -45,28 +45,16 @@ func ProcessCode(prefix, filename string, dst io.Writer, src io.Reader) (err err
 			if node.Body != nil && len(node.Body.List) > 0 {
 				stmtParent[node.Body.List[0]] = node
 			}
-		case *ast.SwitchStmt:
-			if node.Body != nil && len(node.Body.List) > 0 {
-				for _, stmt := range node.Body.List {
-					if clause, ok := stmt.(*ast.CaseClause); ok {
-						stmtParent[clause] = node
-					}
+		case *ast.CaseClause:
+			if node.Body != nil && len(node.Body) > 0 {
+				for _, stmt := range node.Body {
+					stmtParent[stmt] = node
 				}
 			}
-		case *ast.TypeSwitchStmt:
-			if node.Body != nil && len(node.Body.List) > 0 {
-				for _, stmt := range node.Body.List {
-					if clause, ok := stmt.(*ast.CaseClause); ok {
-						stmtParent[clause] = node
-					}
-				}
-			}
-		case *ast.SelectStmt:
-			if node.Body != nil && len(node.Body.List) > 0 {
-				for _, stmt := range node.Body.List {
-					if clause, ok := stmt.(*ast.CaseClause); ok {
-						stmtParent[clause] = node
-					}
+		case *ast.CommClause:
+			if node.Body != nil && len(node.Body) > 0 {
+				for _, stmt := range node.Body {
+					stmtParent[stmt] = node
 				}
 			}
 		}
@@ -86,7 +74,6 @@ func ProcessCode(prefix, filename string, dst io.Writer, src io.Reader) (err err
 				s.logFileStatement(c, node)
 				s.logFileConstant(c, node)
 			}
-		// do nothing
 		case ast.Stmt:
 			{
 				if parent, ok := stmtParent[node]; ok {
@@ -97,25 +84,30 @@ func ProcessCode(prefix, filename string, dst io.Writer, src io.Reader) (err err
 						s.logForInit(c, parent)
 					case *ast.RangeStmt:
 						s.logRangeKeyVal(c, parent)
-					case *ast.SwitchStmt:
-					case *ast.TypeSwitchStmt:
-					case *ast.SelectStmt:
+					case *ast.CaseClause:
+						s.logCaseClause(c, parent)
+					case *ast.CommClause:
+						s.logCommClause(c, parent)
 					}
 				}
-			}
-
-			if _, ok := c.Parent().(*ast.BlockStmt); ok {
-				s.logLocalStatement(c, node)
 			}
 
 			switch node := node.(type) {
 			case *ast.EmptyStmt:
 			case *ast.BlockStmt:
 			case *ast.DeclStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
+
 				if decl, ok := node.Decl.(*ast.GenDecl); ok && decl.Tok == token.VAR {
 					s.logLocalVariable(c, node)
 				}
 			case *ast.AssignStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
+
 				if node.Tok == token.ASSIGN {
 					s.logLocalAssignment(c, node)
 				}
@@ -123,21 +115,63 @@ func ProcessCode(prefix, filename string, dst io.Writer, src io.Reader) (err err
 					s.logLocalAssignment(c, node)
 				}
 			case *ast.ExprStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.IfStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.SwitchStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.TypeSwitchStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.CaseClause:
 			case *ast.SelectStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.CommClause:
 			case *ast.ForStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.RangeStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.ReturnStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.DeferStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.GoStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.BranchStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.LabeledStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.SendStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			case *ast.IncDecStmt:
+				if _, ok := c.Parent().(*ast.BlockStmt); ok {
+					s.logLocalStatement(c, node)
+				}
 			}
 		}
 
