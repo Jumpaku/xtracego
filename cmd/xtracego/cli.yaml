@@ -1,6 +1,12 @@
 #$schema: https://raw.githubusercontent.com/Jumpaku/cyamli/refs/heads/main/v2/schema/cyamli-cli.schema.json
 name: xtracego
 options:
+  -verbose:
+    type: boolean
+    short: -v
+    propagates: true
+    description: |
+      Whether to output verbose messages or not.
   -trace-stmt:
     type: boolean
     propagates: true

@@ -9,7 +9,7 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func (s XTrace) newCaseLogStmt(clause string) ast.Stmt {
+func (s Xtrace) newCaseLogStmt(clause string) ast.Stmt {
 	// log.Println(fmt.Sprintf(`[CASE] case conditions:`))
 	content := fmt.Sprintf("[CASE] %s", clause)
 	return &ast.ExprStmt{
@@ -30,7 +30,7 @@ func (s XTrace) newCaseLogStmt(clause string) ast.Stmt {
 	}
 }
 
-func (s XTrace) logCase(c *astutil.Cursor, info *CaseInfo) {
+func (s Xtrace) logCase(c *astutil.Cursor, info *CaseInfo) {
 	pattern := regexp.MustCompile(`\s+`)
 	frag := s.fragment(info.CaseLabel())
 	frag = pattern.ReplaceAllString(frag, " ")

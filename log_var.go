@@ -9,7 +9,7 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func (s XTrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
+func (s Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 	// log.Println(fmt.Sprintf(`[VAR] VarName=%#v`, VarName))
 	// log.Println(fmt.Sprintf(`[VAR] VarName=<shadowed>`))
 	content := fmt.Sprintf("[VAR] %s=%%#v", name)
@@ -42,7 +42,7 @@ func (s XTrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 	}
 }
 
-func (s XTrace) newVariableLogDecl(name string, shadowed bool) *ast.GenDecl {
+func (s Xtrace) newVariableLogDecl(name string, shadowed bool) *ast.GenDecl {
 	//var _ = func() int {
 	//	log.Println(fmt.Sprintf(`VarName: %+v path/to/source.go:123:45`, VarName))
 	//	return 0
@@ -70,7 +70,7 @@ func (s XTrace) newVariableLogDecl(name string, shadowed bool) *ast.GenDecl {
 	}
 }
 
-func (s XTrace) logFileVariable(c *astutil.Cursor, node *ast.GenDecl) {
+func (s Xtrace) logFileVariable(c *astutil.Cursor, node *ast.GenDecl) {
 	decls := []*ast.GenDecl{}
 	for _, spec := range node.Specs {
 		spec, ok := spec.(*ast.ValueSpec)
@@ -90,7 +90,7 @@ func (s XTrace) logFileVariable(c *astutil.Cursor, node *ast.GenDecl) {
 	}
 }
 
-func (s XTrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
+func (s Xtrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
 	decl, ok := node.Decl.(*ast.GenDecl)
 	if !ok {
 		return
@@ -114,7 +114,7 @@ func (s XTrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
 	}
 }
 
-func (s XTrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
+func (s Xtrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
 	stmts := []ast.Stmt{}
 	for _, lexpr := range node.Lhs {
 		ident, ok := lexpr.(*ast.Ident)
@@ -129,7 +129,7 @@ func (s XTrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
 	}
 }
 
-func (s XTrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
+func (s Xtrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
 	body := info.Body
 	vars := []ast.Stmt{}
 	for _, ident := range info.Variables() {
@@ -137,4 +137,24 @@ func (s XTrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
 	}
 	body.List = append(vars, body.List...)
 	c.Replace(body)
+}
+
+func (s Xtrace) logIfElseVariables(c *astutil.Cursor, info *IfElseInfo) {
+	vars := info.Variables()
+	shadow := map[string]bool{}
+	stmts := []ast.Stmt{}
+	for i := len(vars) - 1; i >= 0; i-- {
+		stmts = append(stmts, s.newVariableLogStmt(vars[i].Name, shadow[vars[i].Name]))
+		shadow[vars[i].Name] = true
+	}
+	mutable.Reverse(stmts)
+
+	if info.Body != nil {
+		info.Body.List = append(stmts, info.Body.List...)
+		c.Replace(info.Body)
+	}
+	if info.ElseBody != nil {
+		info.ElseBody.List = append(stmts, info.ElseBody.List...)
+		c.Replace(info.ElseBody)
+	}
 }

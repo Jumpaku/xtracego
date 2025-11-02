@@ -17,21 +17,31 @@ import (
 
 //go:generate cyamli generate golang -schema-path=cli.yaml -out-path=cli.gen.go
 func main() {
-	if err := Run(cliHandler{}, os.Args); err != nil {
+	if err := Run(&cliHandler{}, os.Args); err != nil {
 		log.Panicf("error: %+v\n", err)
 	}
 }
 
-type cliHandler struct{}
+func (h *cliHandler) logf(format string, args ...any) {
+	if h.verbose {
+		log.Printf(format+"\n", args...)
+	}
+}
 
-var _ CLIHandler = cliHandler{}
+type cliHandler struct {
+	verbose bool
+}
 
-func (h cliHandler) Run(input Input) error {
+var _ CLIHandler = &cliHandler{}
+
+func (h *cliHandler) Run(input Input) error {
 	log.Println(GetDoc(input.Subcommand))
 	return nil
 }
 
-func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
+func (h *cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
+	h.verbose = input.Opt_Verbose
+
 	cfg := xtracego.Config{
 		TraceStmt: input.Opt_TraceStmt,
 		TraceVar:  input.Opt_TraceVar,
@@ -55,7 +65,7 @@ func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 		return fmt.Errorf("failed to resolve package: %w", err)
 	}
 
-	if err := transformSourceFiles(cfg, pkg, outDir); err != nil {
+	if err := h.transformSourceFiles(cfg, pkg, outDir); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
@@ -63,6 +73,7 @@ func (h cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 }
 
 func (h cliHandler) Run_Build(input Input_Build) error {
+	h.verbose = input.Opt_Verbose
 	cfg := xtracego.Config{
 		TraceStmt: input.Opt_TraceStmt,
 		TraceVar:  input.Opt_TraceVar,
@@ -86,14 +97,14 @@ func (h cliHandler) Run_Build(input Input_Build) error {
 		return fmt.Errorf("failed to resolve package: %w", err)
 	}
 
-	if err := transformSourceFiles(cfg, pkg, outDir); err != nil {
+	if err := h.transformSourceFiles(cfg, pkg, outDir); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
 	if pkg.GoModFile != "" {
 		cmd := exec.Command("go", "mod", "tidy")
 		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		log.Printf("[execute] %s [%s]\n", cmd.String(), cmd.Dir)
+		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to run go mod download: %w", err)
 		}
@@ -104,7 +115,7 @@ func (h cliHandler) Run_Build(input Input_Build) error {
 		args = append(args, input.Arg_Package...)
 		cmd := exec.Command("go", args...)
 		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		log.Printf("[execute] %s [%s]\n", cmd.String(), cmd.Dir)
+		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to run go build: %w", err)
 		}
@@ -114,6 +125,8 @@ func (h cliHandler) Run_Build(input Input_Build) error {
 }
 
 func (h cliHandler) Run_Run(input Input_Run) error {
+	h.verbose = input.Opt_Verbose
+
 	cfg := xtracego.Config{
 		TraceStmt: input.Opt_TraceStmt,
 		TraceVar:  input.Opt_TraceVar,
@@ -122,7 +135,6 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	}
 	cfg.GenPrefix(time.Now().Unix())
 
-	fmt.Printf("%#v\n", input)
 	resolveType, packageArgs, cliArgs, err := xtracego.ParseArgs(input.Arg_PackageAndArguments)
 	if err != nil {
 		return fmt.Errorf("failed to parse args: %w", err)
@@ -139,14 +151,14 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 		return fmt.Errorf("failed to resolve package: %w", err)
 	}
 
-	if err := transformSourceFiles(cfg, pkg, outDir); err != nil {
+	if err := h.transformSourceFiles(cfg, pkg, outDir); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
 	if pkg.GoModFile != "" {
 		cmd := exec.Command("go", "mod", "tidy")
 		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		log.Printf("[execute] %s [%s]\n", cmd.String(), cmd.Dir)
+		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to run go mod download: %w", err)
 		}
@@ -163,7 +175,7 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 		args = append(args, packageArgs...)
 		cmd := exec.Command("go", args...)
 		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		log.Printf("[execute] %s [%s]\n", cmd.String(), cmd.Dir)
+		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to run go build: %w", err)
 		}
@@ -171,7 +183,7 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	{
 		cmd := exec.Command(execFile, cliArgs...)
 		cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
-		log.Printf("[execute] %s\n", cmd.String())
+		h.logf("[exec] %s", cmd.String())
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to run go build: %w", err)
 		}
@@ -180,7 +192,7 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	return nil
 }
 
-func transformSourceFiles(cfg xtracego.Config, pkg xtracego.ResolvedPackageFiles, outDir string) error {
+func (h cliHandler) transformSourceFiles(cfg xtracego.Config, pkg xtracego.ResolvedPackageFiles, outDir string) error {
 	srcDir, sourceFiles := pkg.PackageDir, append([]string{}, pkg.SourceFiles...)
 	if pkg.GoModFile != "" {
 		srcDir, sourceFiles = filepath.Dir(pkg.GoModFile), append(sourceFiles, pkg.GoModFile)
@@ -197,7 +209,7 @@ func transformSourceFiles(cfg xtracego.Config, pkg xtracego.ResolvedPackageFiles
 			dstFile := filepath.Join(outDir, relToFile)
 
 			err = xtracego.TransformFile(srcFile, dstFile, func(r io.Reader, w io.Writer) (err error) {
-				log.Printf("[rewrite] %s -> %s\n", srcFile, dstFile)
+				h.logf("[rewrite] %s -> %s", srcFile, dstFile)
 				if strings.HasSuffix(srcFile, ".go") {
 					if err = xtracego.ProcessCode(cfg, srcFile, w, r); err != nil {
 						return fmt.Errorf("failed to copy file: %w", err)

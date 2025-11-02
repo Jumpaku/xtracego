@@ -10,7 +10,7 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func (s XTrace) newStatementLogStmt(pos token.Position, fragment string) ast.Stmt {
+func (s Xtrace) newStatementLogStmt(pos token.Position, fragment string) ast.Stmt {
 	// log.Println(fmt.Sprintf(`if a == 1 { /* path/to/source.go:123:45 */`))
 	content := fmt.Sprintf("%s ", fragment)
 	content = strings.ReplaceAll(content, "\t", "    ")
@@ -31,7 +31,7 @@ func (s XTrace) newStatementLogStmt(pos token.Position, fragment string) ast.Stm
 	}
 }
 
-func (s XTrace) newStatementLogDecl(pos token.Position, fragment string) *ast.GenDecl {
+func (s Xtrace) newStatementLogDecl(pos token.Position, fragment string) *ast.GenDecl {
 	//var _ = func() int {
 	//	log.Println(fmt.Sprintf(`if a == 1 { /* path/to/source.go:123:45 */`))
 	//	return 0
@@ -59,7 +59,7 @@ func (s XTrace) newStatementLogDecl(pos token.Position, fragment string) *ast.Ge
 	}
 }
 
-func (s XTrace) logFileStatement(c *astutil.Cursor, node *ast.GenDecl) {
+func (s Xtrace) logFileStatement(c *astutil.Cursor, node *ast.GenDecl) {
 	for _, spec := range node.Specs {
 		spec, ok := spec.(*ast.ValueSpec)
 		if !ok {
@@ -71,7 +71,7 @@ func (s XTrace) logFileStatement(c *astutil.Cursor, node *ast.GenDecl) {
 	}
 }
 
-func (s XTrace) tryLogLocalStatement(c *astutil.Cursor, node ast.Stmt) {
+func (s Xtrace) tryLogLocalStatement(c *astutil.Cursor, node ast.Stmt) {
 	{
 		insertable := false
 		switch parent := c.Parent().(type) {
@@ -142,4 +142,31 @@ func (s XTrace) tryLogLocalStatement(c *astutil.Cursor, node ast.Stmt) {
 	pos := s.fset.Position(node.Pos())
 	frag := s.fragmentLine(node.Pos())
 	c.InsertBefore(s.newStatementLogStmt(pos, frag))
+}
+
+func (s Xtrace) logIfElseStatement(c *astutil.Cursor, info *IfElseInfo) {
+	stmts := []ast.Stmt{}
+	for i, ifStmt := range info.Parents {
+		if i == 0 {
+			continue
+		}
+		frag := s.fragmentLine(ifStmt.If)
+		stmts = append(stmts, s.newStatementLogStmt(s.fset.Position(ifStmt.If), frag))
+	}
+	if len(info.Parents) > 0 {
+		frag := s.fragmentLine(info.IfStmt.If)
+		stmts = append(stmts, s.newStatementLogStmt(s.fset.Position(info.IfStmt.If), frag))
+		if info.ElseBody != nil {
+			frag := s.fragmentLine(info.IfStmt.Body.Rbrace)
+			stmts = append(stmts, s.newStatementLogStmt(s.fset.Position(info.IfStmt.Body.Rbrace), frag))
+		}
+	}
+	if info.Body != nil {
+		info.Body.List = append(stmts, info.Body.List...)
+		c.Replace(info.Body)
+	}
+	if info.ElseBody != nil {
+		info.ElseBody.List = append(stmts, info.ElseBody.List...)
+		c.Replace(info.ElseBody)
+	}
 }

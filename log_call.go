@@ -8,7 +8,7 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func (s XTrace) newCallLogStmt(name string) ast.Stmt {
+func (s Xtrace) newCallLogStmt(name string) ast.Stmt {
 	// log.Println(fmt.Sprintf(`[CALL] (reciever T) Method`))
 	content := fmt.Sprintf("[CALL] %s", name)
 	return &ast.ExprStmt{
@@ -29,7 +29,7 @@ func (s XTrace) newCallLogStmt(name string) ast.Stmt {
 	}
 }
 
-func (s XTrace) logCall(c *astutil.Cursor, info *FuncInfo) {
+func (s Xtrace) logCall(c *astutil.Cursor, info *FuncInfo) {
 	body := info.Body
 	body.List = append(
 		[]ast.Stmt{s.newCallLogStmt(s.fragment(info.Signature()))},
