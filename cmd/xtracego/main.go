@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -211,8 +212,16 @@ func (h cliHandler) transformSourceFiles(cfg xtracego.Config, pkg xtracego.Resol
 			err = xtracego.TransformFile(srcFile, dstFile, func(r io.Reader, w io.Writer) (err error) {
 				h.logf("[rewrite] %s -> %s", srcFile, dstFile)
 				if strings.HasSuffix(srcFile, ".go") {
-					if err = xtracego.ProcessCode(cfg, srcFile, w, r); err != nil {
+					src := bytes.NewBuffer(nil)
+					if _, err := io.Copy(src, r); err != nil {
 						return fmt.Errorf("failed to copy file: %w", err)
+					}
+					buf, err := xtracego.ProcessCode(cfg, srcFile, src.Bytes())
+					if err != nil {
+						return fmt.Errorf("failed to rewrite file: %w", err)
+					}
+					if _, err := w.Write(buf); err != nil {
+						return fmt.Errorf("failed to write file: %w", err)
 					}
 				} else {
 					_, err = io.Copy(w, r)

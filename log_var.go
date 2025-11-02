@@ -9,7 +9,7 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func (s Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
+func (s *Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 	// log.Println(fmt.Sprintf(`[VAR] VarName=%#v`, VarName))
 	// log.Println(fmt.Sprintf(`[VAR] VarName=<shadowed>`))
 	content := fmt.Sprintf("[VAR] %s=%%#v", name)
@@ -31,10 +31,10 @@ func (s Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 	}
 	return &ast.ExprStmt{
 		X: &ast.CallExpr{
-			Fun: ast.NewIdent(s.prefix + "_log.Println"),
+			Fun: ast.NewIdent(s.Prefix + "_log.Println"),
 			Args: []ast.Expr{
 				&ast.CallExpr{
-					Fun:  ast.NewIdent(s.prefix + "_fmt.Sprintf"),
+					Fun:  ast.NewIdent(s.Prefix + "_fmt.Sprintf"),
 					Args: args,
 				},
 			},
@@ -42,7 +42,7 @@ func (s Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 	}
 }
 
-func (s Xtrace) newVariableLogDecl(name string, shadowed bool) *ast.GenDecl {
+func (s *Xtrace) newVariableLogDecl(name string, shadowed bool) *ast.GenDecl {
 	//var _ = func() int {
 	//	log.Println(fmt.Sprintf(`VarName: %+v path/to/source.go:123:45`, VarName))
 	//	return 0
@@ -70,7 +70,11 @@ func (s Xtrace) newVariableLogDecl(name string, shadowed bool) *ast.GenDecl {
 	}
 }
 
-func (s Xtrace) logFileVariable(c *astutil.Cursor, node *ast.GenDecl) {
+func (s *Xtrace) logFileVariable(c *astutil.Cursor, node *ast.GenDecl) {
+	if !s.TraceVar {
+		return
+	}
+
 	decls := []*ast.GenDecl{}
 	for _, spec := range node.Specs {
 		spec, ok := spec.(*ast.ValueSpec)
@@ -87,10 +91,16 @@ func (s Xtrace) logFileVariable(c *astutil.Cursor, node *ast.GenDecl) {
 	mutable.Reverse(decls)
 	for _, decl := range decls {
 		c.InsertAfter(decl)
+		s.requireImport = true
 	}
+
 }
 
-func (s Xtrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
+func (s *Xtrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
+	if !s.TraceVar {
+		return
+	}
+
 	decl, ok := node.Decl.(*ast.GenDecl)
 	if !ok {
 		return
@@ -111,10 +121,15 @@ func (s Xtrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
 	mutable.Reverse(stmts)
 	for _, decl := range stmts {
 		c.InsertAfter(decl)
+		s.requireImport = true
 	}
 }
 
-func (s Xtrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
+func (s *Xtrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
+	if !s.TraceVar {
+		return
+	}
+
 	stmts := []ast.Stmt{}
 	for _, lexpr := range node.Lhs {
 		ident, ok := lexpr.(*ast.Ident)
@@ -126,10 +141,16 @@ func (s Xtrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
 	mutable.Reverse(stmts)
 	for _, decl := range stmts {
 		c.InsertAfter(decl)
+		s.requireImport = true
 	}
+
 }
 
-func (s Xtrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
+func (s *Xtrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
+	if !s.TraceVar {
+		return
+	}
+
 	body := info.Body
 	vars := []ast.Stmt{}
 	for _, ident := range info.Variables() {
@@ -137,9 +158,15 @@ func (s Xtrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
 	}
 	body.List = append(vars, body.List...)
 	c.Replace(body)
+	s.requireImport = len(vars) > 0
+
 }
 
-func (s Xtrace) logIfElseVariables(c *astutil.Cursor, info *IfElseInfo) {
+func (s *Xtrace) logIfVariables(c *astutil.Cursor, info *IfElseInfo) {
+	if !s.TraceVar {
+		return
+	}
+
 	vars := info.Variables()
 	shadow := map[string]bool{}
 	stmts := []ast.Stmt{}
@@ -152,9 +179,11 @@ func (s Xtrace) logIfElseVariables(c *astutil.Cursor, info *IfElseInfo) {
 	if info.Body != nil {
 		info.Body.List = append(stmts, info.Body.List...)
 		c.Replace(info.Body)
+		s.requireImport = len(vars) > 0
 	}
 	if info.ElseBody != nil {
 		info.ElseBody.List = append(stmts, info.ElseBody.List...)
 		c.Replace(info.ElseBody)
+		s.requireImport = len(vars) > 0
 	}
 }
