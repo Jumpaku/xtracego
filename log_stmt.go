@@ -27,7 +27,7 @@ func (s *Xtrace) newStatementLogStmt(pos token.Position, fragment string) ast.St
 					Args: []ast.Expr{
 						&ast.BasicLit{
 							Kind:  token.STRING,
-							Value: fmt.Sprintf("%q", content),
+							Value: fmt.Sprintf("%q", strings.ReplaceAll(content, "%", "%%")),
 						},
 					},
 				},

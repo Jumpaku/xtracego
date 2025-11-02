@@ -9,24 +9,28 @@ options:
       Whether to output verbose messages or not.
   -trace-stmt:
     type: boolean
+    default: 'true'
     propagates: true
     negation: true
     description: |
       Whether trace basic statements or not.
   -trace-var:
     type: boolean
+    default: 'true'
     propagates: true
     negation: true
     description: |
       Whether trace variables and constants or not.
   -trace-call:
     type: boolean
+    default: 'true'
     propagates: true
     negation: true
     description: |
       Whether trace calling functions and methods or not.
   -trace-case:
     type: boolean
+    default: 'true'
     propagates: true
     negation: true
     description: |

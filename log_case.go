@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"regexp"
+	"strings"
 
 	"golang.org/x/tools/go/ast/astutil"
 )
@@ -12,6 +13,7 @@ import (
 func (s *Xtrace) newCaseLogStmt(clause string) ast.Stmt {
 	// log.Println(fmt.Sprintf(`[CASE] case conditions:`))
 	content := fmt.Sprintf("[CASE] %s", clause)
+	content = strings.ReplaceAll(content, "%", "%%")
 	return &ast.ExprStmt{
 		X: &ast.CallExpr{
 			Fun: ast.NewIdent(s.Prefix + "_log.Println"),
@@ -21,7 +23,7 @@ func (s *Xtrace) newCaseLogStmt(clause string) ast.Stmt {
 					Args: []ast.Expr{
 						&ast.BasicLit{
 							Kind:  token.STRING,
-							Value: fmt.Sprintf("%q", content),
+							Value: fmt.Sprintf("%q", strings.ReplaceAll(content, "%", "%%")),
 						},
 					},
 				},

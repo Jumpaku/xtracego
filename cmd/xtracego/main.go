@@ -17,6 +17,7 @@ import (
 )
 
 //go:generate cyamli generate golang -schema-path=cli.yaml -out-path=cli.gen.go
+//go:generate cyamli generate docs -format=markdown -schema-path=cli.yaml -out-path=../../docs/xtracego.md
 func main() {
 	if err := Run(&cliHandler{}, os.Args); err != nil {
 		log.Panicf("error: %+v\n", err)

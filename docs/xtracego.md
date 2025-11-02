@@ -11,19 +11,19 @@ xtracego [<option>]...
 
 ### Options
 
-* `-trace-call[=<boolean>]`  (default=`false`),  
+* `-trace-call[=<boolean>]`  (default=`true`),  
   `-no-trace-call[=<boolean>]`:  
   Whether trace calling functions and methods or not.  
 
-* `-trace-case[=<boolean>]`  (default=`false`),  
+* `-trace-case[=<boolean>]`  (default=`true`),  
   `-no-trace-case[=<boolean>]`:  
   Whether trace cases of switch and select statements or not.  
 
-* `-trace-stmt[=<boolean>]`  (default=`false`),  
+* `-trace-stmt[=<boolean>]`  (default=`true`),  
   `-no-trace-stmt[=<boolean>]`:  
   Whether trace basic statements or not.  
 
-* `-trace-var[=<boolean>]`  (default=`false`),  
+* `-trace-var[=<boolean>]`  (default=`true`),  
   `-no-trace-var[=<boolean>]`:  
   Whether trace variables and constants or not.  
 
@@ -72,19 +72,19 @@ xtracego build [<option>|<argument>]... [-- [<argument>]...]
   Arguments to be passed to the go build command.  
   If there are multiple arguments for go build, this option can be specified multiple times.  
 
-* `-trace-call[=<boolean>]`  (default=`false`),  
+* `-trace-call[=<boolean>]`  (default=`true`),  
   `-no-trace-call[=<boolean>]`:  
   Whether trace calling functions and methods or not.  
 
-* `-trace-case[=<boolean>]`  (default=`false`),  
+* `-trace-case[=<boolean>]`  (default=`true`),  
   `-no-trace-case[=<boolean>]`:  
   Whether trace cases of switch and select statements or not.  
 
-* `-trace-stmt[=<boolean>]`  (default=`false`),  
+* `-trace-stmt[=<boolean>]`  (default=`true`),  
   `-no-trace-stmt[=<boolean>]`:  
   Whether trace basic statements or not.  
 
-* `-trace-var[=<boolean>]`  (default=`false`),  
+* `-trace-var[=<boolean>]`  (default=`true`),  
   `-no-trace-var[=<boolean>]`:  
   Whether trace variables and constants or not.  
 
@@ -119,19 +119,19 @@ xtracego rewrite [<option>|<argument>]... [-- [<argument>]...]
   Output directory to place the rewritten source files of the package.  
   This option is required.  
 
-* `-trace-call[=<boolean>]`  (default=`false`),  
+* `-trace-call[=<boolean>]`  (default=`true`),  
   `-no-trace-call[=<boolean>]`:  
   Whether trace calling functions and methods or not.  
 
-* `-trace-case[=<boolean>]`  (default=`false`),  
+* `-trace-case[=<boolean>]`  (default=`true`),  
   `-no-trace-case[=<boolean>]`:  
   Whether trace cases of switch and select statements or not.  
 
-* `-trace-stmt[=<boolean>]`  (default=`false`),  
+* `-trace-stmt[=<boolean>]`  (default=`true`),  
   `-no-trace-stmt[=<boolean>]`:  
   Whether trace basic statements or not.  
 
-* `-trace-var[=<boolean>]`  (default=`false`),  
+* `-trace-var[=<boolean>]`  (default=`true`),  
   `-no-trace-var[=<boolean>]`:  
   Whether trace variables and constants or not.  
 
@@ -166,19 +166,19 @@ xtracego run [<option>|<argument>]... [-- [<argument>]...]
   Arguments to be passed to the go run command.  
   If there are multiple arguments for go build, this option can be specified multiple times.  
 
-* `-trace-call[=<boolean>]`  (default=`false`),  
+* `-trace-call[=<boolean>]`  (default=`true`),  
   `-no-trace-call[=<boolean>]`:  
   Whether trace calling functions and methods or not.  
 
-* `-trace-case[=<boolean>]`  (default=`false`),  
+* `-trace-case[=<boolean>]`  (default=`true`),  
   `-no-trace-case[=<boolean>]`:  
   Whether trace cases of switch and select statements or not.  
 
-* `-trace-stmt[=<boolean>]`  (default=`false`),  
+* `-trace-stmt[=<boolean>]`  (default=`true`),  
   `-no-trace-stmt[=<boolean>]`:  
   Whether trace basic statements or not.  
 
-* `-trace-var[=<boolean>]`  (default=`false`),  
+* `-trace-var[=<boolean>]`  (default=`true`),  
   `-no-trace-var[=<boolean>]`:  
   Whether trace variables and constants or not.  
 
