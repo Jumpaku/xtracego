@@ -86,7 +86,7 @@ Xtrace is execution trace information. The following traces are available:
 - Traces of basic statements
 - Traces of function and method calls
 - Traces of switch/select cases
-- Traces of  and constants
+- Traces of variables and constants
 
 ## Installation
 
