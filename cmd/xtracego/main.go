@@ -9,10 +9,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/Jumpaku/xtracego"
+	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -73,7 +75,7 @@ func (h *cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 	}
 	cfg.GenUniqueString(time.Now().Unix())
 
-	if err := h.transformSourceFiles(cfg, pkg, outDir); err != nil {
+	if err := h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
@@ -116,7 +118,7 @@ func (h cliHandler) Run_Build(input Input_Build) error {
 	}
 	cfg.GenUniqueString(time.Now().Unix())
 
-	if err := h.transformSourceFiles(cfg, pkg, outDir); err != nil {
+	if err := h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
@@ -179,7 +181,7 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	}
 	cfg.GenUniqueString(time.Now().Unix())
 
-	if err := h.transformSourceFiles(cfg, pkg, outDir); err != nil {
+	if err := h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot); err != nil {
 		return fmt.Errorf("failed to clone source files: %w", err)
 	}
 
@@ -224,16 +226,39 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	return nil
 }
 
-func (h *cliHandler) transformSourceFiles(cfg xtracego.Config, pkg xtracego.ResolvedPackageFiles, outDir string) error {
+func (h *cliHandler) transformSourceFiles(
+	cfg xtracego.Config,
+	pkg xtracego.ResolvedPackageFiles,
+	outDir string,
+	copyOnlyRegexpStrs []string,
+	copyOnlyNotRegexpStr string,
+) error {
 	srcDir, sourceFiles := pkg.PackageDir, append([]string{}, pkg.SourceFiles...)
 	if pkg.GoModFile != "" {
 		srcDir, sourceFiles = filepath.Dir(pkg.GoModFile), append(sourceFiles, pkg.GoModFile)
 	}
 
+	copyOnlyRegexp := []*regexp.Regexp{}
+	for _, s := range copyOnlyRegexpStrs {
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return fmt.Errorf("failed to compile regexp '%s': %w", s, err)
+		}
+		copyOnlyRegexp = append(copyOnlyRegexp, re)
+	}
+	copyOnlyNotRegexp, err := regexp.Compile(copyOnlyNotRegexpStr)
+	if err != nil {
+		return fmt.Errorf("failed to compile regexp '%s': %w", copyOnlyNotRegexpStr, err)
+	}
 	ctx := context.Background()
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, srcFile := range sourceFiles {
 		eg.Go(func() error {
+			isCopyOnly := copyOnlyNotRegexp.MatchString(srcFile) ||
+				lo.SomeBy(copyOnlyRegexp, func(r *regexp.Regexp) bool { return r.MatchString(srcFile) })
+
+			isGoSource := strings.HasSuffix(srcFile, ".go")
+
 			relToFile, err := filepath.Rel(srcDir, srcFile)
 			if err != nil {
 				return fmt.Errorf("failed to get relative path: %w", err)
@@ -241,8 +266,8 @@ func (h *cliHandler) transformSourceFiles(cfg xtracego.Config, pkg xtracego.Reso
 			dstFile := filepath.Join(outDir, relToFile)
 
 			err = xtracego.TransformFile(srcFile, dstFile, func(r io.Reader, w io.Writer) (err error) {
-				h.logf("[rewrite] %s -> %s", srcFile, dstFile)
-				if strings.HasSuffix(srcFile, ".go") {
+				if isGoSource && !isCopyOnly {
+					h.logf("[rewrite] %s -> %s", srcFile, dstFile)
 					src := bytes.NewBuffer(nil)
 					if _, err := io.Copy(src, r); err != nil {
 						return fmt.Errorf("failed to copy file: %w", err)
@@ -255,8 +280,8 @@ func (h *cliHandler) transformSourceFiles(cfg xtracego.Config, pkg xtracego.Reso
 						return fmt.Errorf("failed to write file: %w", err)
 					}
 				} else {
-					_, err = io.Copy(w, r)
-					if err != nil {
+					h.logf("[copy] %s -> %s", srcFile, dstFile)
+					if _, err := io.Copy(w, r); err != nil {
 						return fmt.Errorf("failed to copy file: %w", err)
 					}
 				}
@@ -264,7 +289,7 @@ func (h *cliHandler) transformSourceFiles(cfg xtracego.Config, pkg xtracego.Reso
 				return nil
 			})
 			if err != nil {
-				return fmt.Errorf("failed to copy file: %w", err)
+				return fmt.Errorf("failed to rewrite file: %w", err)
 			}
 			return nil
 		})

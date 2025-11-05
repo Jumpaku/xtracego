@@ -42,6 +42,18 @@ options:
     negation: true
     description: |
       Whether show goroutine ID or not.
+  -copy-only:
+    type: string
+    propagates: true
+    repeated: true
+    description: |
+      Specifies source files not to be rewritten but only copied by regular expressions.
+      If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.
+  -copy-only-not:
+    type: string
+    propagates: true
+    description: |
+      Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.
 
 subcommands:
 
