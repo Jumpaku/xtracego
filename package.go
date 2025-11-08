@@ -32,37 +32,12 @@ func (pkg ResolvedPackageFiles) IsModule() bool {
 	return pkg.GoModFile != ""
 }
 
-func ParseArgs(packageAndArguments []string) (resolveType ResolveType, packageArgs []string, cliArgs []string, err error) {
-	if len(packageAndArguments) == 0 {
-		return ResolveTypeUnspecified, nil, nil, fmt.Errorf("no package specified")
+func ParsePackageArgs(packageArg string) (resolveType ResolveType, packageArgs []string) {
+	if info, err := os.Stat(packageArg); err == nil && info.IsDir() {
+		return ResolveTypePackageDirectory, []string{packageArg}
 	}
+	return ResolveTypeCommandLineArguments, strings.Split(packageArg, ",")
 
-	packageDir := packageAndArguments[0]
-	if strings.HasSuffix(packageDir, ".go") {
-		for i, arg := range packageAndArguments {
-			if arg == "--" {
-				cliArgs = packageAndArguments[i+1:]
-				break
-			}
-			if !strings.HasSuffix(arg, ".go") {
-				cliArgs = packageAndArguments[i:]
-				break
-			}
-			packageArgs = append(packageArgs, arg)
-		}
-		return ResolveTypeCommandLineArguments, packageArgs, cliArgs, nil
-	}
-
-	cliArgs = packageAndArguments[1:]
-	if len(cliArgs) > 0 && !strings.HasPrefix(cliArgs[0], "--") {
-		cliArgs = cliArgs[1:]
-	}
-
-	if !strings.HasPrefix(packageDir, ".") && !strings.HasPrefix(packageDir, "/") {
-		return ResolveTypeUnspecified, nil, nil, fmt.Errorf("invalid package directory: %q", packageDir)
-	}
-
-	return ResolveTypePackageDirectory, []string{packageDir}, cliArgs, nil
 }
 
 func ResolvePackage(resolveType ResolveType, packageArgs []string) (resolved ResolvedPackageFiles, err error) {

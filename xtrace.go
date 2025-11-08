@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"math/rand"
 	"strings"
 
 	"github.com/samber/lo/mutable"
@@ -29,17 +28,6 @@ type Config struct {
 	ModulePath  string
 }
 
-const alphabet = "abcdefghijklmnopqrstuvwxyz"
-
-func (cfg *Config) GenUniqueString(seed int64) {
-	r := rand.New(rand.NewSource(seed))
-	v := []byte{}
-	for i := 0; i < 8; i++ {
-		v = append(v, alphabet[r.Intn(len(alphabet))])
-	}
-	cfg.UniqueString = string(v)
-}
-
 func (cfg *Config) PackageName() string {
 	if cfg.ResolveType == ResolveTypeCommandLineArguments {
 		return "main"
@@ -54,8 +42,12 @@ func (cfg *Config) ImportPath() string {
 	return cfg.ModulePath + "/" + cfg.PackageName()
 }
 
-func (cfg *Config) FileName() string {
+func (cfg *Config) LibraryFileName() string {
 	return "xtracego_" + cfg.UniqueString + ".go"
+}
+
+func (cfg *Config) ExecutableFileName() string {
+	return "main_" + cfg.UniqueString
 }
 
 func (cfg *Config) IdentifierPrintlnStatement() string {
