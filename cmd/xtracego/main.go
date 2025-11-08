@@ -138,7 +138,6 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	defer os.RemoveAll(outDir)
 
 	pkg := h.resolvePackage(input.Arg_Package)
-	fmt.Println(pkg)
 
 	cfg := xtracego.Config{
 		TraceStmt:     input.Opt_TraceStmt,
