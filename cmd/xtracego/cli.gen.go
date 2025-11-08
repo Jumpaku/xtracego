@@ -12,6 +12,7 @@ type CLIHandler interface {
 	Run_Build(input Input_Build) error
 	Run_Rewrite(input Input_Rewrite) error
 	Run_Run(input Input_Run) error
+	Run_Version(input Input_Version) error
 }
 
 func Run(handler CLIHandler, args []string) error {
@@ -36,6 +37,11 @@ func Run(handler CLIHandler, args []string) error {
 		var input Input_Run
 		input.resolveInput(subcommandPath, options, arguments)
 		return handler.Run_Run(input)
+
+	case "version":
+		var input Input_Version
+		input.resolveInput(subcommandPath, options, arguments)
+		return handler.Run_Version(input)
 	}
 	return nil
 }
@@ -44,6 +50,7 @@ type Input struct {
 	Opt_CopyOnly    []string
 	Opt_CopyOnlyNot string
 	Opt_Goroutine   bool
+	Opt_Seed        int64
 	Opt_Timestamp   bool
 	Opt_TraceCall   bool
 	Opt_TraceStmt   bool
@@ -58,8 +65,9 @@ type Input struct {
 
 func (input *Input) resolveInput(subcommand, options, arguments []string) {
 	*input = Input{Opt_CopyOnly: []string{},
-		Opt_CopyOnlyNot: "",
+		Opt_CopyOnlyNot: ".*",
 		Opt_Goroutine:   true,
+		Opt_Seed:        0,
 		Opt_Timestamp:   true,
 		Opt_TraceCall:   true,
 		Opt_TraceStmt:   true,
@@ -118,6 +126,18 @@ func (input *Input) resolveInput(subcommand, options, arguments []string) {
 				return
 			} else {
 				input.Opt_Goroutine = !v.(bool)
+			}
+
+		case "-seed":
+			if !cut {
+				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
+				return
+			}
+			if v, err := parseValue("int64", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Seed = v.(int64)
 			}
 
 		case "-timestamp":
@@ -231,6 +251,7 @@ type Input_Build struct {
 	Opt_CopyOnlyNot    string
 	Opt_GoBuildArg     []string
 	Opt_Goroutine      bool
+	Opt_Seed           int64
 	Opt_Timestamp      bool
 	Opt_TraceCall      bool
 	Opt_TraceStmt      bool
@@ -247,9 +268,10 @@ type Input_Build struct {
 func (input *Input_Build) resolveInput(subcommand, options, arguments []string) {
 	*input = Input_Build{Opt_BuildDirectory: "",
 		Opt_CopyOnly:    []string{},
-		Opt_CopyOnlyNot: "",
+		Opt_CopyOnlyNot: ".*",
 		Opt_GoBuildArg:  []string{},
 		Opt_Goroutine:   true,
+		Opt_Seed:        0,
 		Opt_Timestamp:   true,
 		Opt_TraceCall:   true,
 		Opt_TraceStmt:   true,
@@ -332,6 +354,18 @@ func (input *Input_Build) resolveInput(subcommand, options, arguments []string) 
 				return
 			} else {
 				input.Opt_Goroutine = !v.(bool)
+			}
+
+		case "-seed":
+			if !cut {
+				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
+				return
+			}
+			if v, err := parseValue("int64", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Seed = v.(int64)
 			}
 
 		case "-timestamp":
@@ -454,6 +488,7 @@ type Input_Rewrite struct {
 	Opt_CopyOnlyNot     string
 	Opt_Goroutine       bool
 	Opt_OutputDirectory string
+	Opt_Seed            int64
 	Opt_Timestamp       bool
 	Opt_TraceCall       bool
 	Opt_TraceStmt       bool
@@ -469,9 +504,10 @@ type Input_Rewrite struct {
 
 func (input *Input_Rewrite) resolveInput(subcommand, options, arguments []string) {
 	*input = Input_Rewrite{Opt_CopyOnly: []string{},
-		Opt_CopyOnlyNot:     "",
+		Opt_CopyOnlyNot:     ".*",
 		Opt_Goroutine:       true,
 		Opt_OutputDirectory: "",
+		Opt_Seed:            0,
 		Opt_Timestamp:       true,
 		Opt_TraceCall:       true,
 		Opt_TraceStmt:       true,
@@ -542,6 +578,18 @@ func (input *Input_Rewrite) resolveInput(subcommand, options, arguments []string
 				return
 			} else {
 				input.Opt_OutputDirectory = v.(string)
+			}
+
+		case "-seed":
+			if !cut {
+				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
+				return
+			}
+			if v, err := parseValue("int64", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Seed = v.(int64)
 			}
 
 		case "-timestamp":
@@ -664,6 +712,7 @@ type Input_Run struct {
 	Opt_CopyOnlyNot string
 	Opt_GoBuildArg  []string
 	Opt_Goroutine   bool
+	Opt_Seed        int64
 	Opt_Timestamp   bool
 	Opt_TraceCall   bool
 	Opt_TraceStmt   bool
@@ -680,9 +729,10 @@ type Input_Run struct {
 
 func (input *Input_Run) resolveInput(subcommand, options, arguments []string) {
 	*input = Input_Run{Opt_CopyOnly: []string{},
-		Opt_CopyOnlyNot: "",
+		Opt_CopyOnlyNot: ".*",
 		Opt_GoBuildArg:  []string{},
 		Opt_Goroutine:   true,
+		Opt_Seed:        0,
 		Opt_Timestamp:   true,
 		Opt_TraceCall:   true,
 		Opt_TraceStmt:   true,
@@ -753,6 +803,18 @@ func (input *Input_Run) resolveInput(subcommand, options, arguments []string) {
 				return
 			} else {
 				input.Opt_Goroutine = !v.(bool)
+			}
+
+		case "-seed":
+			if !cut {
+				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
+				return
+			}
+			if v, err := parseValue("int64", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Seed = v.(int64)
 			}
 
 		case "-timestamp":
@@ -881,12 +943,211 @@ func (input *Input_Run) resolveInput(subcommand, options, arguments []string) {
 		input.Arg_Arguments = v.([]string)
 	}
 }
+
+type Input_Version struct {
+	Opt_CopyOnly    []string
+	Opt_CopyOnlyNot string
+	Opt_Goroutine   bool
+	Opt_Seed        int64
+	Opt_Timestamp   bool
+	Opt_TraceCall   bool
+	Opt_TraceStmt   bool
+	Opt_TraceVar    bool
+	Opt_Verbose     bool
+	Subcommand      []string
+	Options         []string
+	Arguments       []string
+
+	ErrorMessage string
+}
+
+func (input *Input_Version) resolveInput(subcommand, options, arguments []string) {
+	*input = Input_Version{Opt_CopyOnly: []string{},
+		Opt_CopyOnlyNot: ".*",
+		Opt_Goroutine:   true,
+		Opt_Seed:        0,
+		Opt_Timestamp:   true,
+		Opt_TraceCall:   true,
+		Opt_TraceStmt:   true,
+		Opt_TraceVar:    true,
+		Opt_Verbose:     false,
+		Subcommand:      subcommand,
+		Options:         options,
+		Arguments:       arguments,
+	}
+
+	for _, arg := range input.Options {
+		optName, lit, cut := strings.Cut(arg, "=")
+		func(...any) {}(optName, lit, cut)
+
+		switch optName {
+		case "-copy-only":
+			if !cut {
+				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
+				return
+			}
+			if v, err := parseValue("[]string", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_CopyOnly = append(input.Opt_CopyOnly, v.([]string)[0])
+			}
+
+		case "-copy-only-not":
+			if !cut {
+				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
+				return
+			}
+			if v, err := parseValue("string", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_CopyOnlyNot = v.(string)
+			}
+
+		case "-goroutine":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Goroutine = v.(bool)
+			}
+		case "-no-goroutine":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Goroutine = !v.(bool)
+			}
+
+		case "-seed":
+			if !cut {
+				input.ErrorMessage = fmt.Sprintf("value is not specified to option %q", optName)
+				return
+			}
+			if v, err := parseValue("int64", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Seed = v.(int64)
+			}
+
+		case "-timestamp":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Timestamp = v.(bool)
+			}
+		case "-no-timestamp":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Timestamp = !v.(bool)
+			}
+
+		case "-trace-call":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_TraceCall = v.(bool)
+			}
+		case "-no-trace-call":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_TraceCall = !v.(bool)
+			}
+
+		case "-trace-stmt":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_TraceStmt = v.(bool)
+			}
+		case "-no-trace-stmt":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_TraceStmt = !v.(bool)
+			}
+
+		case "-trace-var":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_TraceVar = v.(bool)
+			}
+		case "-no-trace-var":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_TraceVar = !v.(bool)
+			}
+
+		case "-verbose", "-v":
+			if !cut {
+				lit = "true"
+			}
+			if v, err := parseValue("bool", lit); err != nil {
+				input.ErrorMessage = fmt.Sprintf("value %q is not assignable to option %q", lit, optName)
+				return
+			} else {
+				input.Opt_Verbose = v.(bool)
+			}
+
+		default:
+			input.ErrorMessage = fmt.Sprintf("unknown option %q", optName)
+			return
+		}
+	}
+
+	expectedArgs := 0
+	func(...any) {}(expectedArgs)
+}
 func resolveArgs(args []string) (subcommandPath []string, options []string, arguments []string) {
 	if len(args) == 0 {
 		panic("command line arguments are too few")
 	}
 	subcommandSet := map[string]bool{
-		"": true, "build": true, "rewrite": true, "run": true,
+		"": true, "build": true, "rewrite": true, "run": true, "version": true,
 	}
 
 	subcommandPath, options, arguments = []string{}, []string{}, []string{}
@@ -972,7 +1233,7 @@ func parseValue(typ string, strValue ...string) (dst any, err error) {
 }
 
 func GetVersion() string {
-	return ""
+	return "v0.0.6"
 }
 func GetProgram() string {
 	return "xtracego"
@@ -980,16 +1241,19 @@ func GetProgram() string {
 func GetDoc(subcommands []string) string {
 	switch strings.Join(subcommands, " ") {
 	case "":
-		return "xtracego \n\n    Syntax:\n        $ xtracego  [<option>]...\n\n    Options:\n        -copy-only=<string>  (default=\"\"):\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>  (default=\"\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -goroutine[=<boolean>]  (default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -timestamp[=<boolean>]  (default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>]  (default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>]  (default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>]  (default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>]  (default=false):\n            Whether to output verbose messages or not.\n\n    Subcommands:\n        build:\n            Rewrites the source files in the specified package and places these files in the build directory.\n            Executes go build at the specified directory with the given arguments.\n\n        rewrite:\n            Rewrites the source files in the specified package and places these files in the output directory.\n            The rewritten files includes Go code to log trace information.\n            If go.mod of the module of the package is found, it is copied to the output directory.\n\n        run:\n            Rewrites the source files in the specified package and places these files in a temporary directory.\n            Executes go build at the temporary directory with the given arguments.\n            Thereafter, the built executable file is executed at the current working directory.\n\n\n"
+		return "xtracego \n\n    Syntax:\n        $ xtracego  [<option>]...\n\n    Options:\n        -copy-only=<string> ...:\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>(default=\".*\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -goroutine[=<boolean>](default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -seed=<integer>(default=0):\n            Random seed for reproducibility of rewritten source files.\n            If not specified, the seed is generated randomly.\n\n        -timestamp[=<boolean>](default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>](default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>](default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>](default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>](default=false):\n            Whether to output verbose messages or not.\n\n    Subcommands:\n        build:\n            Rewrites the source files in the specified package and places these files in the build directory.\n            Executes go build at the specified directory with the given arguments.\n\n        rewrite:\n            Rewrites the source files in the specified package and places these files in the output directory.\n            The rewritten files includes Go code to log trace information.\n            If go.mod of the module of the package is found, it is copied to the output directory.\n\n        run:\n            Rewrites the source files in the specified package and places these files in a temporary directory.\n            Executes go build at the temporary directory with the given arguments.\n            Thereafter, the built executable file is executed at the current working directory.\n\n        version:\n            Prints the version of xtracego.\n\n\n"
 
 	case "build":
-		return "xtracego build\n\n    Description:\n        Rewrites the source files in the specified package and places these files in the build directory.\n        Executes go build at the specified directory with the given arguments.\n\n    Syntax:\n        $ xtracego build [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -build-directory=<string>, -o=<string>  (default=\"\"):\n            The source files included the specified package are rewritten and placed in this directory which is used as a current working directory to execute go build.\n            This option is required.\n\n        -copy-only=<string>  (default=\"\"):\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>  (default=\"\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -go-build-arg=<string>, -a=<string>  (default=\"\"):\n            Arguments to be passed to the go build command.\n            If there are multiple arguments for go build, this option can be specified multiple times.\n\n        -goroutine[=<boolean>]  (default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -timestamp[=<boolean>]  (default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>]  (default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>]  (default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>]  (default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>]  (default=false):\n            Whether to output verbose messages or not.\n\n    Arguments:\n        1.  <package:string>\n            Path to a local directory of the main package to be rewritten.\n\n\n"
+		return "xtracego build\n\n    Description:\n        Rewrites the source files in the specified package and places these files in the build directory.\n        Executes go build at the specified directory with the given arguments.\n\n    Syntax:\n        $ xtracego build [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -build-directory=<string>, -o=<string>(default=\"\"):\n            The source files included the specified package are rewritten and placed in this directory which is used as a current working directory to execute go build.\n            This option is required.\n\n        -copy-only=<string> ...:\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>(default=\".*\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -go-build-arg=<string> ..., -a=<string> ...:\n            Arguments to be passed to the go build command.\n            If there are multiple arguments for go build, this option can be specified multiple times.\n\n        -goroutine[=<boolean>](default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -seed=<integer>(default=0):\n            Random seed for reproducibility of rewritten source files.\n            If not specified, the seed is generated randomly.\n\n        -timestamp[=<boolean>](default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>](default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>](default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>](default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>](default=false):\n            Whether to output verbose messages or not.\n\n    Arguments:\n        1.  <package:string>\n            Package to be rewritten and built.\n            The way to specify the package is as same as xtracego rewrite command.\n\n\n"
 
 	case "rewrite":
-		return "xtracego rewrite\n\n    Description:\n        Rewrites the source files in the specified package and places these files in the output directory.\n        The rewritten files includes Go code to log trace information.\n        If go.mod of the module of the package is found, it is copied to the output directory.\n\n    Syntax:\n        $ xtracego rewrite [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -copy-only=<string>  (default=\"\"):\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>  (default=\"\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -goroutine[=<boolean>]  (default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -output-directory=<string>, -o=<string>  (default=\"\"):\n            Output directory to place the rewritten source files of the package.\n            This option is required.\n\n        -timestamp[=<boolean>]  (default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>]  (default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>]  (default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>]  (default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>]  (default=false):\n            Whether to output verbose messages or not.\n\n    Arguments:\n        1.  <package:string>\n            Path to a local directory of the main package to be rewritten.\n\n\n"
+		return "xtracego rewrite\n\n    Description:\n        Rewrites the source files in the specified package and places these files in the output directory.\n        The rewritten files includes Go code to log trace information.\n        If go.mod of the module of the package is found, it is copied to the output directory.\n\n    Syntax:\n        $ xtracego rewrite [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -copy-only=<string> ...:\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>(default=\".*\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -goroutine[=<boolean>](default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -output-directory=<string>, -o=<string>(default=\"\"):\n            Output directory to place the rewritten source files of the package.\n            This option is required.\n\n        -seed=<integer>(default=0):\n            Random seed for reproducibility of rewritten source files.\n            If not specified, the seed is generated randomly.\n\n        -timestamp[=<boolean>](default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>](default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>](default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>](default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>](default=false):\n            Whether to output verbose messages or not.\n\n    Arguments:\n        1.  <package:string>\n            Package to be rewritten can be specified by path to a local directory or paths to local source files of a main package.\n            \n            When the package is specified with a local directory path, go.mod must be found at the ancestors of the current working directory.\n            Dependencies in the same module and external dependencies are resolved via the go.mod.\n            \n            When the package is specified with local source file paths, the source files must have extension .go, be in the same directory, be in the main package, and contain only one main function.\n            If go.mod is found at the ancestors of the current working directory, dependencies in the same module and external dependencies are resolved via the go.mod.\n\n\n"
 
 	case "run":
-		return "xtracego run\n\n    Description:\n        Rewrites the source files in the specified package and places these files in a temporary directory.\n        Executes go build at the temporary directory with the given arguments.\n        Thereafter, the built executable file is executed at the current working directory.\n\n    Syntax:\n        $ xtracego run [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -copy-only=<string>  (default=\"\"):\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>  (default=\"\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -go-build-arg=<string>, -a=<string>  (default=\"\"):\n            Arguments to be passed to the go run command.\n            If there are multiple arguments for go build, this option can be specified multiple times.\n\n        -goroutine[=<boolean>]  (default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -timestamp[=<boolean>]  (default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>]  (default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>]  (default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>]  (default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>]  (default=false):\n            Whether to output verbose messages or not.\n\n    Arguments:\n        1.  <package:string>\n            Path to a local directory of the main package to be rewritten, followed by arguments to be passed to the main function.\n\n        2. [<arguments:string>]...\n            Arguments to be passed to the main function.\n\n\n"
+		return "xtracego run\n\n    Description:\n        Rewrites the source files in the specified package and places these files in a temporary directory.\n        Executes go build at the temporary directory with the given arguments.\n        Thereafter, the built executable file is executed at the current working directory.\n\n    Syntax:\n        $ xtracego run [<option>|<argument>]... [-- [<argument>]...]\n\n    Options:\n        -copy-only=<string> ...:\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>(default=\".*\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -go-build-arg=<string> ..., -a=<string> ...:\n            Arguments to be passed to the go run command.\n            If there are multiple arguments for go build, this option can be specified multiple times.\n\n        -goroutine[=<boolean>](default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -seed=<integer>(default=0):\n            Random seed for reproducibility of rewritten source files.\n            If not specified, the seed is generated randomly.\n\n        -timestamp[=<boolean>](default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>](default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>](default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>](default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>](default=false):\n            Whether to output verbose messages or not.\n\n    Arguments:\n        1.  <package:string>\n            Package to be rewritten and built.\n            The way to specify the package is as same as xtracego rewrite command.\n\n        2. [<arguments:string>]...\n            Arguments to be passed to the main function.\n\n\n"
+
+	case "version":
+		return "xtracego version\n\n    Description:\n        Prints the version of xtracego.\n\n    Syntax:\n        $ xtracego version [<option>]...\n\n    Options:\n        -copy-only=<string> ...:\n            Specifies source files not to be rewritten but only copied by regular expressions.\n            If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.\n\n        -copy-only-not=<string>(default=\".*\"):\n            Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.\n\n        -goroutine[=<boolean>](default=true),\n        -no-goroutine[=<boolean>]:\n            Whether show goroutine ID or not.\n\n        -seed=<integer>(default=0):\n            Random seed for reproducibility of rewritten source files.\n            If not specified, the seed is generated randomly.\n\n        -timestamp[=<boolean>](default=true),\n        -no-timestamp[=<boolean>]:\n            Whether show timestamp or not.\n\n        -trace-call[=<boolean>](default=true),\n        -no-trace-call[=<boolean>]:\n            Whether trace calling and returning functions and methods or not.\n\n        -trace-stmt[=<boolean>](default=true),\n        -no-trace-stmt[=<boolean>]:\n            Whether trace basic statements or not.\n\n        -trace-var[=<boolean>](default=true),\n        -no-trace-var[=<boolean>]:\n            Whether trace variables and constants or not.\n\n        -verbose[=<boolean>], -v[=<boolean>](default=false):\n            Whether to output verbose messages or not.\n\n\n"
 	default:
 		panic(fmt.Sprintf(`invalid subcommands: %v`, subcommands))
 	}

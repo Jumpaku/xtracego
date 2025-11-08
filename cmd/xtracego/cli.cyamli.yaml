@@ -1,5 +1,6 @@
 #$schema: https://raw.githubusercontent.com/Jumpaku/cyamli/refs/heads/main/v2/schema/cyamli-cli.schema.json
 name: xtracego
+version: v0.0.6
 options:
   -verbose:
     type: boolean
@@ -7,6 +8,12 @@ options:
     propagates: true
     description: |
       Whether to output verbose messages or not.
+  -seed:
+    type: integer
+    propagates: true
+    description: |
+      Random seed for reproducibility of rewritten source files.
+      If not specified, the seed is generated randomly.
   -trace-stmt:
     type: boolean
     default: 'true'
@@ -51,12 +58,15 @@ options:
       If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.
   -copy-only-not:
     type: string
+    default: '.*'
     propagates: true
     description: |
       Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.
 
 subcommands:
-
+  version:
+    description: |
+      Prints the version of xtracego.
   rewrite:
     description: |
       Rewrites the source files in the specified package and places these files in the output directory.
@@ -71,7 +81,13 @@ subcommands:
     arguments:
       - name: package
         description: |
-          Path to a local directory of the main package to be rewritten.
+          Package to be rewritten can be specified by path to a local directory or paths to local source files of a main package.
+          
+          When the package is specified with a local directory path, go.mod must be found at the ancestors of the current working directory.
+          Dependencies in the same module and external dependencies are resolved via the go.mod.
+          
+          When the package is specified with local source file paths, the source files must have extension .go, be in the same directory, be in the main package, and contain only one main function.
+          If go.mod is found at the ancestors of the current working directory, dependencies in the same module and external dependencies are resolved via the go.mod.
 
   build:
     description: |
@@ -92,7 +108,8 @@ subcommands:
     arguments:
       - name: package
         description: |
-          Path to a local directory of the main package to be rewritten.
+          Package to be rewritten and built.
+          The way to specify the package is as same as xtracego rewrite command.
 
   run:
     description: |
@@ -109,7 +126,9 @@ subcommands:
     arguments:
       - name: package
         description: |
-          Path to a local directory of the main package to be rewritten, followed by arguments to be passed to the main function.
+          Package to be rewritten and built.
+          The way to specify the package is as same as xtracego rewrite command.
+
       - name: arguments
         variadic: true
         description: |

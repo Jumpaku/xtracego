@@ -45,5 +45,5 @@ func (s *Xtrace) logCall(c *astutil.Cursor, info *FuncInfo) {
 		body.List...,
 	)
 	c.Replace(body)
-	s.requireImport = true
+	s.libraryRequired = true
 }

@@ -1,4 +1,4 @@
-# xtracego
+# xtracego (v0.0.6)
 
 
 ## xtracego
@@ -11,16 +11,20 @@ xtracego [<option>]...
 
 ### Options
 
-* `-copy-only=<string>`  (default=`""`):  
+* `-copy-only=<string> ...`  :  
   Specifies source files not to be rewritten but only copied by regular expressions.  
   If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.  
 
-* `-copy-only-not=<string>`  (default=`""`):  
+* `-copy-only-not=<string>`  (default=`".*"`):  
   Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.  
 
 * `-goroutine[=<boolean>]`  (default=`true`),  
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
+
+* `-seed=<integer>`  (default=`0`):  
+  Random seed for reproducibility of rewritten source files.  
+  If not specified, the seed is generated randomly.  
 
 * `-timestamp[=<boolean>]`  (default=`true`),  
   `-no-timestamp[=<boolean>]`:  
@@ -57,6 +61,9 @@ xtracego [<option>]...
   Executes go build at the temporary directory with the given arguments.  
   Thereafter, the built executable file is executed at the current working directory.  
 
+* version:  
+  Prints the version of xtracego.  
+
 
 
 
@@ -79,20 +86,24 @@ xtracego build [<option>|<argument>]... [-- [<argument>]...]
   The source files included the specified package are rewritten and placed in this directory which is used as a current working directory to execute go build.  
   This option is required.  
 
-* `-copy-only=<string>`  (default=`""`):  
+* `-copy-only=<string> ...`  :  
   Specifies source files not to be rewritten but only copied by regular expressions.  
   If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.  
 
-* `-copy-only-not=<string>`  (default=`""`):  
+* `-copy-only-not=<string>`  (default=`".*"`):  
   Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.  
 
-* `-go-build-arg=<string>`, `-a=<string>`  (default=`""`):  
+* `-go-build-arg=<string> ...`, `-a=<string> ...`  :  
   Arguments to be passed to the go build command.  
   If there are multiple arguments for go build, this option can be specified multiple times.  
 
 * `-goroutine[=<boolean>]`  (default=`true`),  
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
+
+* `-seed=<integer>`  (default=`0`):  
+  Random seed for reproducibility of rewritten source files.  
+  If not specified, the seed is generated randomly.  
 
 * `-timestamp[=<boolean>]`  (default=`true`),  
   `-no-timestamp[=<boolean>]`:  
@@ -116,7 +127,8 @@ xtracego build [<option>|<argument>]... [-- [<argument>]...]
 ### Arguments
 
 0. `<package:string>`  
-  Path to a local directory of the main package to be rewritten.  
+  Package to be rewritten and built.  
+  The way to specify the package is as same as xtracego rewrite command.  
 
 
 
@@ -137,11 +149,11 @@ xtracego rewrite [<option>|<argument>]... [-- [<argument>]...]
 
 ### Options
 
-* `-copy-only=<string>`  (default=`""`):  
+* `-copy-only=<string> ...`  :  
   Specifies source files not to be rewritten but only copied by regular expressions.  
   If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.  
 
-* `-copy-only-not=<string>`  (default=`""`):  
+* `-copy-only-not=<string>`  (default=`".*"`):  
   Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.  
 
 * `-goroutine[=<boolean>]`  (default=`true`),  
@@ -151,6 +163,10 @@ xtracego rewrite [<option>|<argument>]... [-- [<argument>]...]
 * `-output-directory=<string>`, `-o=<string>`  (default=`""`):  
   Output directory to place the rewritten source files of the package.  
   This option is required.  
+
+* `-seed=<integer>`  (default=`0`):  
+  Random seed for reproducibility of rewritten source files.  
+  If not specified, the seed is generated randomly.  
 
 * `-timestamp[=<boolean>]`  (default=`true`),  
   `-no-timestamp[=<boolean>]`:  
@@ -174,7 +190,13 @@ xtracego rewrite [<option>|<argument>]... [-- [<argument>]...]
 ### Arguments
 
 0. `<package:string>`  
-  Path to a local directory of the main package to be rewritten.  
+  Package to be rewritten can be specified by path to a local directory or paths to local source files of a main package.  
+    
+  When the package is specified with a local directory path, go.mod must be found at the ancestors of the current working directory.  
+  Dependencies in the same module and external dependencies are resolved via the go.mod.  
+    
+  When the package is specified with local source file paths, the source files must have extension .go, be in the same directory, be in the main package, and contain only one main function.  
+  If go.mod is found at the ancestors of the current working directory, dependencies in the same module and external dependencies are resolved via the go.mod.  
 
 
 
@@ -195,20 +217,24 @@ xtracego run [<option>|<argument>]... [-- [<argument>]...]
 
 ### Options
 
-* `-copy-only=<string>`  (default=`""`):  
+* `-copy-only=<string> ...`  :  
   Specifies source files not to be rewritten but only copied by regular expressions.  
   If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.  
 
-* `-copy-only-not=<string>`  (default=`""`):  
+* `-copy-only-not=<string>`  (default=`".*"`):  
   Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.  
 
-* `-go-build-arg=<string>`, `-a=<string>`  (default=`""`):  
+* `-go-build-arg=<string> ...`, `-a=<string> ...`  :  
   Arguments to be passed to the go run command.  
   If there are multiple arguments for go build, this option can be specified multiple times.  
 
 * `-goroutine[=<boolean>]`  (default=`true`),  
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
+
+* `-seed=<integer>`  (default=`0`):  
+  Random seed for reproducibility of rewritten source files.  
+  If not specified, the seed is generated randomly.  
 
 * `-timestamp[=<boolean>]`  (default=`true`),  
   `-no-timestamp[=<boolean>]`:  
@@ -232,10 +258,62 @@ xtracego run [<option>|<argument>]... [-- [<argument>]...]
 ### Arguments
 
 0. `<package:string>`  
-  Path to a local directory of the main package to be rewritten, followed by arguments to be passed to the main function.  
+  Package to be rewritten and built.  
+  The way to specify the package is as same as xtracego rewrite command.  
 
 1. `[<arguments:string>]...`  
   Arguments to be passed to the main function.  
+
+
+
+
+## xtracego version
+
+### Description
+
+Prints the version of xtracego.
+
+### Syntax
+
+```shell
+xtracego version [<option>]...
+```
+
+### Options
+
+* `-copy-only=<string> ...`  :  
+  Specifies source files not to be rewritten but only copied by regular expressions.  
+  If a source file is included in the package and its absolute path matches this regular expression, it is only copied to the output directory.  
+
+* `-copy-only-not=<string>`  (default=`".*"`):  
+  Same as -copy-only but source files whose absolute path  **DO NOT MATCH**  this regular expression are only copied.  
+
+* `-goroutine[=<boolean>]`  (default=`true`),  
+  `-no-goroutine[=<boolean>]`:  
+  Whether show goroutine ID or not.  
+
+* `-seed=<integer>`  (default=`0`):  
+  Random seed for reproducibility of rewritten source files.  
+  If not specified, the seed is generated randomly.  
+
+* `-timestamp[=<boolean>]`  (default=`true`),  
+  `-no-timestamp[=<boolean>]`:  
+  Whether show timestamp or not.  
+
+* `-trace-call[=<boolean>]`  (default=`true`),  
+  `-no-trace-call[=<boolean>]`:  
+  Whether trace calling and returning functions and methods or not.  
+
+* `-trace-stmt[=<boolean>]`  (default=`true`),  
+  `-no-trace-stmt[=<boolean>]`:  
+  Whether trace basic statements or not.  
+
+* `-trace-var[=<boolean>]`  (default=`true`),  
+  `-no-trace-var[=<boolean>]`:  
+  Whether trace variables and constants or not.  
+
+* `-verbose[=<boolean>]`, `-v[=<boolean>]`  (default=`false`):  
+  Whether to output verbose messages or not.  
 
 
 

@@ -73,7 +73,7 @@ func (s *Xtrace) logFileStatement(c *astutil.Cursor, node *ast.GenDecl) {
 		pos := s.fset.Position(spec.Pos())
 		frag := s.fragmentLine(spec.Pos())
 		c.InsertBefore(s.newStatementLogDecl(pos, frag))
-		s.requireImport = true
+		s.libraryRequired = true
 	}
 }
 
@@ -153,7 +153,7 @@ func (s *Xtrace) tryLogLocalStatement(c *astutil.Cursor, node ast.Stmt) {
 	pos := s.fset.Position(node.Pos())
 	frag := s.fragmentLine(node.Pos())
 	c.InsertBefore(s.newStatementLogStmt(pos, frag))
-	s.requireImport = true
+	s.libraryRequired = true
 }
 
 func (s *Xtrace) logIfElseStatement(c *astutil.Cursor, info *IfElseInfo) {
@@ -180,12 +180,12 @@ func (s *Xtrace) logIfElseStatement(c *astutil.Cursor, info *IfElseInfo) {
 	if info.Body != nil {
 		info.Body.List = append(stmts, info.Body.List...)
 		c.Replace(info.Body)
-		s.requireImport = len(stmts) > 0
+		s.libraryRequired = len(stmts) > 0
 	}
 	if info.ElseBody != nil {
 		info.ElseBody.List = append(stmts, info.ElseBody.List...)
 		c.Replace(info.ElseBody)
-		s.requireImport = len(stmts) > 0
+		s.libraryRequired = len(stmts) > 0
 	}
 }
 
@@ -199,13 +199,13 @@ func (s *Xtrace) logCaseStatement(c *astutil.Cursor, info *CaseInfo) {
 		stmt := s.newStatementLogStmt(s.fset.Position(info.Case.Case), frag)
 		info.Case.Body = append([]ast.Stmt{stmt}, info.Case.Body...)
 		c.Replace(info.Case)
-		s.requireImport = true
+		s.libraryRequired = true
 	}
 	if info.Comm != nil {
 		frag := s.fragmentLine(info.Comm.Case)
 		stmt := s.newStatementLogStmt(s.fset.Position(info.Comm.Case), frag)
 		info.Comm.Body = append([]ast.Stmt{stmt}, info.Comm.Body...)
 		c.Replace(info.Comm)
-		s.requireImport = true
+		s.libraryRequired = true
 	}
 }

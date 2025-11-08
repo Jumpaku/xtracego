@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,17 +19,29 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-//go:generate cyamli generate golang -schema-path=cli.yaml -out-path=cli.gen.go
-//go:generate cyamli generate docs -format=markdown -schema-path=cli.yaml -out-path=../../docs/xtracego.md
+//go:generate cyamli generate golang -schema-path=cli.cyamli.yaml -out-path=cli.gen.go
+//go:generate cyamli generate docs -format=markdown -schema-path=cli.cyamli.yaml -out-path=../../docs/xtracego.md
 func main() {
 	if err := Run(&cliHandler{}, os.Args); err != nil {
 		log.Panicf("error: %+v\n", err)
 	}
 }
 
-func (h *cliHandler) logf(format string, args ...any) {
-	if h.verbose {
-		log.Printf(format+"\n", args...)
+func requireOption[T int64 | bool | string](subcommand []string, option string, value T) T {
+	var zero T
+	panicIf(value == zero, "option %s is required\n%s", option, GetDoc(subcommand))
+	return value
+}
+
+func panicIfError(err error, format string, args ...any) {
+	if err != nil {
+		log.Panicln(fmt.Sprintf(format, args...) + fmt.Sprintf(": %+v", err))
+	}
+}
+
+func panicIf(shouldPanic bool, format string, args ...any) {
+	if shouldPanic {
+		log.Panicln(fmt.Sprintf(format, args...))
 	}
 }
 
@@ -38,6 +51,17 @@ type cliHandler struct {
 
 var _ CLIHandler = &cliHandler{}
 
+func (h *cliHandler) logf(format string, args ...any) {
+	if h.verbose {
+		log.Printf(format+"\n", args...)
+	}
+}
+
+func (h *cliHandler) Run_Version(_ Input_Version) error {
+	fmt.Println(GetVersion())
+	return nil
+}
+
 func (h *cliHandler) Run(input Input) error {
 	log.Println(GetDoc(input.Subcommand))
 	return nil
@@ -46,23 +70,9 @@ func (h *cliHandler) Run(input Input) error {
 func (h *cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 	h.verbose = input.Opt_Verbose
 
-	resolveType, packageArgs, _, err := xtracego.ParseArgs([]string{input.Arg_Package})
-	if err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
-	}
+	outDir := requireOption(input.Subcommand, "-output-directory", input.Opt_OutputDirectory)
 
-	outDir := input.Opt_OutputDirectory
-	if outDir == "" {
-		return fmt.Errorf("-output-directory is required")
-	}
-
-	pkg, err := xtracego.ResolvePackage(resolveType, packageArgs)
-	if err != nil {
-		return fmt.Errorf("failed to resolve package: %w", err)
-	}
-	if pkg.GoModFile == "" {
-		return fmt.Errorf("go.mod is required")
-	}
+	pkg := h.resolvePackage(input.Arg_Package)
 
 	cfg := xtracego.Config{
 		TraceStmt:     input.Opt_TraceStmt,
@@ -70,42 +80,28 @@ func (h *cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 		TraceCall:     input.Opt_TraceCall,
 		ShowTimestamp: input.Opt_Timestamp,
 		ShowGoroutine: input.Opt_Goroutine,
-		ResolveType:   resolveType,
-		ModulePath:    pkg.Module,
-	}
-	cfg.GenUniqueString(time.Now().Unix())
-
-	if err := h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot); err != nil {
-		return fmt.Errorf("failed to clone source files: %w", err)
+		ResolveType:   pkg.ResolveType,
+		ModuleName:    pkg.Module,
+		UniqueString:  generateUniqueString(input.Opt_Seed),
 	}
 
-	if err := h.saveLibraryFiles(cfg, outDir); err != nil {
-		return fmt.Errorf("failed to save xtracego library: %w", err)
+	h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot)
+
+	h.saveLibraryFiles(cfg, outDir)
+
+	if pkg.ResolveType == xtracego.ResolveType_CommandLineArguments {
+		h.saveGoModFile(cfg, outDir)
 	}
 
 	return nil
 }
 
-func (h cliHandler) Run_Build(input Input_Build) error {
+func (h cliHandler) Run_Build(input Input_Build) (err error) {
 	h.verbose = input.Opt_Verbose
 
-	resolveType, packageArgs, _, err := xtracego.ParseArgs([]string{input.Arg_Package})
-	if err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
-	}
+	outDir := requireOption(input.Subcommand, "-build-directory", input.Opt_BuildDirectory)
 
-	outDir := input.Opt_BuildDirectory
-	if outDir == "" {
-		return fmt.Errorf("-build-directory is required")
-	}
-
-	pkg, err := xtracego.ResolvePackage(resolveType, packageArgs)
-	if err != nil {
-		return fmt.Errorf("failed to resolve package: %w", err)
-	}
-	if pkg.GoModFile == "" {
-		return fmt.Errorf("go.mod is required")
-	}
+	pkg := h.resolvePackage(input.Arg_Package)
 
 	cfg := xtracego.Config{
 		TraceStmt:     input.Opt_TraceStmt,
@@ -113,62 +109,35 @@ func (h cliHandler) Run_Build(input Input_Build) error {
 		TraceCall:     input.Opt_TraceCall,
 		ShowTimestamp: input.Opt_Timestamp,
 		ShowGoroutine: input.Opt_Goroutine,
-		ResolveType:   resolveType,
-		ModulePath:    pkg.Module,
-	}
-	cfg.GenUniqueString(time.Now().Unix())
-
-	if err := h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot); err != nil {
-		return fmt.Errorf("failed to clone source files: %w", err)
+		ResolveType:   pkg.ResolveType,
+		ModuleName:    pkg.Module,
+		UniqueString:  generateUniqueString(input.Opt_Seed),
 	}
 
-	if err := h.saveLibraryFiles(cfg, outDir); err != nil {
-		return fmt.Errorf("failed to save xtracego library: %w", err)
+	h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot)
+
+	h.saveLibraryFiles(cfg, outDir)
+
+	packageDir := h.getBuildPackageDir(pkg, outDir)
+	if pkg.ResolveType == xtracego.ResolveType_CommandLineArguments {
+		h.saveGoModFile(cfg, outDir)
 	}
 
-	if pkg.GoModFile != "" {
-		cmd := exec.Command("go", "mod", "tidy")
-		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to run go mod download: %w", err)
-		}
-	}
-	{
-		args := []string{"build"}
-		args = append(args, input.Opt_GoBuildArg...)
-		args = append(args, input.Arg_Package)
-		cmd := exec.Command("go", args...)
-		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to run go build: %w", err)
-		}
-	}
+	h.execGoModTidy(outDir)
+
+	h.execGoBuild(input.Opt_GoBuildArg, packageDir, outDir)
 
 	return nil
 }
 
 func (h cliHandler) Run_Run(input Input_Run) error {
 	h.verbose = input.Opt_Verbose
-	resolveType, packageArgs, _, err := xtracego.ParseArgs([]string{input.Arg_Package})
-	if err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
-	}
 
 	outDir, err := os.MkdirTemp("", "xtracego_*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp dir: %w", err)
-	}
+	panicIfError(err, "failed to create temp dir")
 	defer os.RemoveAll(outDir)
 
-	pkg, err := xtracego.ResolvePackage(resolveType, packageArgs)
-	if err != nil {
-		return fmt.Errorf("failed to resolve package: %w", err)
-	}
-	if pkg.GoModFile == "" {
-		return fmt.Errorf("go.mod is required")
-	}
+	pkg := h.resolvePackage(input.Arg_Package)
 
 	cfg := xtracego.Config{
 		TraceStmt:     input.Opt_TraceStmt,
@@ -176,87 +145,78 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 		TraceCall:     input.Opt_TraceCall,
 		ShowTimestamp: input.Opt_Timestamp,
 		ShowGoroutine: input.Opt_Goroutine,
-		ResolveType:   resolveType,
-		ModulePath:    pkg.Module,
-	}
-	cfg.GenUniqueString(time.Now().Unix())
-
-	if err := h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot); err != nil {
-		return fmt.Errorf("failed to clone source files: %w", err)
+		ResolveType:   pkg.ResolveType,
+		ModuleName:    pkg.Module,
+		UniqueString:  generateUniqueString(input.Opt_Seed),
 	}
 
-	if err := h.saveLibraryFiles(cfg, outDir); err != nil {
-		return fmt.Errorf("failed to save xtracego library: %w", err)
+	h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot)
+
+	h.saveLibraryFiles(cfg, outDir)
+
+	packageDir := h.getBuildPackageDir(pkg, outDir)
+	if pkg.ResolveType == xtracego.ResolveType_CommandLineArguments {
+		h.saveGoModFile(cfg, outDir)
 	}
 
-	if pkg.GoModFile != "" {
-		cmd := exec.Command("go", "mod", "tidy")
-		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to run go mod download: %w", err)
-		}
-	}
+	h.execGoModTidy(outDir)
 
-	execFile, err := filepath.Abs(filepath.Join(outDir, "main"))
-	if err != nil {
-		return fmt.Errorf("failed to get absolute path: %w", err)
-	}
-	{
-		args := []string{"build"}
-		args = append(args, input.Opt_GoBuildArg...)
-		args = append(args, "-o", execFile)
-		args = append(args, packageArgs...)
-		cmd := exec.Command("go", args...)
-		cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
-		h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to run go build: %w", err)
-		}
-	}
-	{
-		cmd := exec.Command(execFile, input.Arg_Arguments...)
-		cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
-		h.logf("[exec] %s", cmd.String())
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to run go build: %w", err)
-		}
-	}
+	execFile, err := filepath.Abs(filepath.Join(outDir, cfg.ExecutableFileName()))
+	panicIfError(err, "failed to get absolute path")
+
+	h.execGoBuild(append(input.Opt_GoBuildArg, "-o", execFile), packageDir, outDir)
+
+	h.execBuiltFile(input, execFile)
 
 	return nil
 }
 
+func generateUniqueString(seed int64) string {
+	if seed == 0 {
+		seed = time.Now().Unix()
+	}
+	alphabet := "abcdefghijklmnopqrstuvwxyz"
+	r := rand.New(rand.NewSource(seed))
+	v := []byte{}
+	for i := 0; i < 8; i++ {
+		v = append(v, alphabet[r.Intn(len(alphabet))])
+	}
+	return string(v)
+}
+
+func (h cliHandler) resolvePackage(packageArg string) xtracego.ResolvedPackage {
+	pkg, err := xtracego.ResolvePackage(packageArg)
+	panicIfError(err, "failed to resolve package")
+	return pkg
+}
+
 func (h *cliHandler) transformSourceFiles(
 	cfg xtracego.Config,
-	pkg xtracego.ResolvedPackageFiles,
+	pkg xtracego.ResolvedPackage,
 	outDir string,
-	copyOnlyRegexpStrs []string,
+	copyOnlyRegexpStr []string,
 	copyOnlyNotRegexpStr string,
-) error {
+) {
 	srcDir, sourceFiles := pkg.PackageDir, append([]string{}, pkg.SourceFiles...)
-	if pkg.GoModFile != "" {
+	if pkg.ResolveType != xtracego.ResolveType_CommandLineArguments {
 		srcDir, sourceFiles = filepath.Dir(pkg.GoModFile), append(sourceFiles, pkg.GoModFile)
 	}
 
 	copyOnlyRegexp := []*regexp.Regexp{}
-	for _, s := range copyOnlyRegexpStrs {
+	for _, s := range copyOnlyRegexpStr {
 		re, err := regexp.Compile(s)
-		if err != nil {
-			return fmt.Errorf("failed to compile regexp '%s': %w", s, err)
-		}
+		panicIfError(err, "failed to compile regexp '%s'", s)
+
 		copyOnlyRegexp = append(copyOnlyRegexp, re)
 	}
 	copyOnlyNotRegexp, err := regexp.Compile(copyOnlyNotRegexpStr)
-	if err != nil {
-		return fmt.Errorf("failed to compile regexp '%s': %w", copyOnlyNotRegexpStr, err)
-	}
-	ctx := context.Background()
-	eg, ctx := errgroup.WithContext(ctx)
+	panicIfError(err, "failed to compile regexp '%s'", copyOnlyNotRegexpStr)
+
+	eg, _ := errgroup.WithContext(context.Background())
 	for _, srcFile := range sourceFiles {
 		eg.Go(func() error {
-			isCopyOnly := copyOnlyNotRegexp.MatchString(srcFile) ||
+			isCopyOnly := (!copyOnlyNotRegexp.MatchString(srcFile)) ||
 				lo.SomeBy(copyOnlyRegexp, func(r *regexp.Regexp) bool { return r.MatchString(srcFile) })
-
 			isGoSource := strings.HasSuffix(srcFile, ".go")
 
 			relToFile, err := filepath.Rel(srcDir, srcFile)
@@ -295,24 +255,68 @@ func (h *cliHandler) transformSourceFiles(
 		})
 	}
 
-	if err := eg.Wait(); err != nil {
-		return fmt.Errorf("failed to copy files: %w", err)
-	}
-
-	return nil
+	err = eg.Wait()
+	panicIfError(err, "failed to wait")
 }
 
-func (h *cliHandler) saveLibraryFiles(cfg xtracego.Config, outDir string) (err error) {
-	dst := filepath.Join(outDir, cfg.FileName())
-	if cfg.PackageName() != "" {
-		dst = filepath.Join(outDir, cfg.PackageName(), cfg.FileName())
+func (h *cliHandler) saveLibraryFiles(cfg xtracego.Config, outDir string) {
+	dst := filepath.Join(outDir, cfg.LibraryFileName())
+	if cfg.ResolveType != xtracego.ResolveType_CommandLineArguments {
+		dst = filepath.Join(outDir, cfg.LibraryPackageName(), cfg.LibraryFileName())
 	}
+
 	buf := bytes.NewBuffer(nil)
-	if err := xtracego.GetXtraceGo(cfg.UniqueString, buf); err != nil {
-		return fmt.Errorf("failed to generate library: %w", err)
+	err := xtracego.GetLibraryCode(cfg.LibraryPackageName(), cfg.UniqueString, buf)
+	panicIfError(err, "failed to generate library")
+
+	h.logf("[add] %s", dst)
+	err = xtracego.SaveFile(dst, buf.String())
+	panicIfError(err, "failed to save library")
+}
+
+func (h *cliHandler) saveGoModFile(cfg xtracego.Config, outDir string) {
+	dst := filepath.Join(outDir, "go.mod")
+	panicIf(cfg.ResolveType != xtracego.ResolveType_CommandLineArguments, "go.mod is not required")
+
+	h.logf("[add] %s", dst)
+	err := xtracego.SaveFile(dst, fmt.Sprintf(`module %s`, cfg.UniqueString))
+	panicIfError(err, "failed to save go.mod file")
+}
+
+func (h cliHandler) getBuildPackageDir(pkg xtracego.ResolvedPackage, outDir string) string {
+	if pkg.ResolveType == xtracego.ResolveType_CommandLineArguments {
+		return "."
 	}
-	if err := xtracego.SaveFile(dst, buf.String()); err != nil {
-		return fmt.Errorf("failed to save library: %w", err)
-	}
-	return nil
+	cwd, err := os.Getwd()
+	panicIfError(err, "failed to get current directory")
+	relToPkg, err := filepath.Rel(cwd, pkg.PackageDir)
+	panicIfError(err, "failed to get relative path")
+	outDir, err = filepath.Abs(outDir)
+	panicIfError(err, "failed to get absolute path")
+	return filepath.Join(outDir, relToPkg)
+}
+
+func (h cliHandler) execGoModTidy(outDir string) {
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
+	h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
+	err := cmd.Run()
+	panicIfError(err, "failed to run go mod tidy")
+}
+
+func (h cliHandler) execGoBuild(buildArgs []string, buildPackageDir string, outDir string) {
+	args := append(append([]string{"build"}, buildArgs...), buildPackageDir)
+	cmd := exec.Command("go", args...)
+	cmd.Dir, cmd.Stdout, cmd.Stderr, cmd.Stdin = outDir, os.Stdout, os.Stderr, os.Stdin
+	h.logf("[exec] %s [%s]", cmd.String(), cmd.Dir)
+	err := cmd.Run()
+	panicIfError(err, "failed to run go build")
+}
+
+func (h cliHandler) execBuiltFile(input Input_Run, execFile string) {
+	cmd := exec.Command(execFile, input.Arg_Arguments...)
+	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
+	h.logf("[exec] %s", cmd.String())
+	err := cmd.Run()
+	panicIfError(err, "failed to run built file")
 }

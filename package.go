@@ -2,226 +2,131 @@ package xtracego
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/samber/lo"
-	"golang.org/x/mod/modfile"
 	"golang.org/x/tools/go/packages"
 )
 
 type ResolveType string
 
 const (
-	ResolveTypeUnspecified          ResolveType = ""
-	ResolveTypeCommandLineArguments ResolveType = "command-line-arguments"
-	ResolveTypePackageDirectory     ResolveType = "package-directory"
+	// ResolveTypeUnspecified Cannot resolve package.
+	ResolveTypeUnspecified ResolveType = ""
+
+	// ResolveType_CommandLineArguments Source files are specified and go.mod not found.
+	// The source files must:
+	// - have extension .go,
+	// - be in the same directory,
+	// - be in the main package,
+	// - and contain only one main function.
+	ResolveType_CommandLineArguments ResolveType = "command-line-arguments"
+
+	// ResolveType_CommandLineArguments_Module Source files are specified and go.mod found.
+	// The source files must:
+	// - have extension .go,
+	// - be in the same directory,
+	// - be in the main package,
+	// - and contain only one main function.
+	// Multiple source files can be specified with a string of comma-separated source file paths.
+	// Dependencies in the same module and external dependencies are resolved via go.mod.
+	ResolveType_CommandLineArguments_Module ResolveType = "command-line-arguments(module)"
+
+	// ResolveType_PackageDirectory_Module A directory of a main package is specified and go.mod found.
+	// The directory must:
+	// - have prefix '/', '.', or '..',
+	// - and contain source files which are in the main package and contain only one main function.
+	// Dependencies in the same module and external dependencies are resolved via go.mod.
+	ResolveType_PackageDirectory_Module ResolveType = "package-directory(module)"
 )
 
-type ResolvedPackageFiles struct {
+type ResolvedPackage struct {
 	ResolveType ResolveType
 	SourceFiles []string
-	GoModFile   string
 	PackageDir  string
+	GoModFile   string
 	Module      string
 }
 
-func (pkg ResolvedPackageFiles) IsModule() bool {
-	return pkg.GoModFile != ""
-}
-
-func ParseArgs(packageAndArguments []string) (resolveType ResolveType, packageArgs []string, cliArgs []string, err error) {
-	if len(packageAndArguments) == 0 {
-		return ResolveTypeUnspecified, nil, nil, fmt.Errorf("no package specified")
+func ResolvePackage(packageArg string) (resolved ResolvedPackage, err error) {
+	if packageArg == "" {
+		return ResolvedPackage{}, fmt.Errorf("no package specified")
 	}
-
-	packageDir := packageAndArguments[0]
-	if strings.HasSuffix(packageDir, ".go") {
-		for i, arg := range packageAndArguments {
-			if arg == "--" {
-				cliArgs = packageAndArguments[i+1:]
-				break
-			}
-			if !strings.HasSuffix(arg, ".go") {
-				cliArgs = packageAndArguments[i:]
-				break
-			}
-			packageArgs = append(packageArgs, arg)
-		}
-		return ResolveTypeCommandLineArguments, packageArgs, cliArgs, nil
-	}
-
-	cliArgs = packageAndArguments[1:]
-	if len(cliArgs) > 0 && !strings.HasPrefix(cliArgs[0], "--") {
-		cliArgs = cliArgs[1:]
-	}
-
-	if !strings.HasPrefix(packageDir, ".") && !strings.HasPrefix(packageDir, "/") {
-		return ResolveTypeUnspecified, nil, nil, fmt.Errorf("invalid package directory: %q", packageDir)
-	}
-
-	return ResolveTypePackageDirectory, []string{packageDir}, cliArgs, nil
-}
-
-func ResolvePackage(resolveType ResolveType, packageArgs []string) (resolved ResolvedPackageFiles, err error) {
-	switch resolveType {
-	default:
-		return ResolvedPackageFiles{}, fmt.Errorf("invalid resolve type: %q", resolveType)
-	case ResolveTypeCommandLineArguments:
-		{
-			// all files must be .go files in the same directory.
-			if err := validateCommandLineArguments(packageArgs); err != nil {
-				return ResolvedPackageFiles{}, err
-			}
-			file, err := filepath.Abs(packageArgs[0])
-			if err != nil {
-				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve %q: %w", packageArgs[0], err)
-			}
-			goModPath, moduleName, goModPathFound, err := findGoMod(filepath.Dir(file))
-			if err != nil {
-				return ResolvedPackageFiles{}, fmt.Errorf("failed to find go.mod: %w", err)
-			}
-			sourceFiles, err := resolveSourceFiles(packageArgs)
-			if err != nil {
-				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve source files: %w", err)
-			}
-			resolved := ResolvedPackageFiles{ResolveType: resolveType, SourceFiles: sourceFiles, PackageDir: filepath.Dir(file)}
-			if goModPathFound {
-				resolved.GoModFile = goModPath
-			}
-			if moduleName != "" {
-				resolved.Module = moduleName
-			}
-			return resolved, nil
-		}
-	case ResolveTypePackageDirectory:
-		{
-			if len(packageArgs) == 0 {
-				return ResolvedPackageFiles{}, fmt.Errorf("no package specified")
-			}
-			packageDir := packageArgs[0]
-			goModPath, moduleName, found, err := findGoMod(packageDir)
-			if err != nil {
-				return ResolvedPackageFiles{}, fmt.Errorf("failed to find go.mod: %w", err)
-			}
-			sourceFiles, err := resolveSourceFiles(packageArgs)
-			if err != nil {
-				return ResolvedPackageFiles{}, fmt.Errorf("failed to resolve source files: %w", err)
-			}
-			resolved := ResolvedPackageFiles{ResolveType: resolveType, SourceFiles: sourceFiles, PackageDir: packageDir}
-			if found {
-				resolved.GoModFile = goModPath
-			}
-			if moduleName != "" {
-				resolved.Module = moduleName
-			}
-			return resolved, nil
-		}
-	}
-}
-
-func validateCommandLineArguments(packageArgs []string) error {
-	if len(packageArgs) == 0 {
-		return fmt.Errorf("no package specified")
-	}
-	dirs := map[string]bool{}
-	for _, file := range packageArgs {
-		absFile, err := filepath.Abs(file)
-		if err != nil {
-			return fmt.Errorf("failed to resolve %q: %w", file, err)
-		}
-		s, err := os.Stat(absFile)
-		if err != nil {
-			return fmt.Errorf("failed to stat %q: %w", file, err)
-		}
-		if s.IsDir() {
-			return fmt.Errorf("all files must be .go files, got directory %q", file)
-		}
-
-		dirs[filepath.Dir(absFile)] = true
-	}
-	if len(dirs) != 1 {
-		return fmt.Errorf("all files must be in the same directory")
-	}
-	return nil
-}
-
-func findGoMod(dir string) (goModPath, moduleName string, found bool, err error) {
-	dir, err = filepath.Abs(dir)
-	if err != nil {
-		return "", "", false, fmt.Errorf("failed to resolve %q: %w", dir, err)
-	}
-
-	for {
-		goModPath = filepath.Join(dir, "go.mod")
-		if _, err := os.Stat(goModPath); err != nil {
-			if !os.IsNotExist(err) {
-				return "", "", false, fmt.Errorf("failed to stat %q: %w", goModPath, err)
-			}
-		} else {
-			data, err := os.ReadFile(goModPath)
-			if err != nil {
-				return "", "", false, fmt.Errorf("failed to read %q: %w", goModPath, err)
-			}
-			modFile, err := modfile.Parse(goModPath, data, nil)
-			if err != nil {
-				return "", "", false, fmt.Errorf("failed to parse %q: %w", goModPath, err)
-			}
-			if modFile.Module == nil || modFile.Module.Mod.Path == "" {
-				return "", "", false, fmt.Errorf("invalid module in %q", goModPath)
-			}
-			return goModPath, modFile.Module.Mod.Path, true, nil
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", "", false, nil
-		}
-		dir = parent
-	}
-}
-
-func resolveSourceFiles(packageArgs []string) (sourceFiles []string, err error) {
 	c := packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedEmbedPatterns | packages.NeedDeps | packages.NeedImports | packages.NeedModule,
 	}
-	pkgs, err := packages.Load(&c, packageArgs...)
+	pkgs, err := packages.Load(&c, strings.Split(packageArg, ",")...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load packages: %w", err)
+		return ResolvedPackage{}, fmt.Errorf("failed to load packages: %w", err)
 	}
-	sourceFileSet := map[string]bool{}
-	mainPkgs := map[string]bool{}
+	var (
+		sourceFileSet          = map[string]bool{}
+		isCommandLineArguments bool
+		mainPackageDir         string
+		goModFile              string
+		moduleName             string
+	)
 	for pkg := range packages.Postorder(pkgs) {
 		if pkg.Name == "main" {
-			mainPkgs[pkg.PkgPath] = true
+			if mainPackageDir != "" && mainPackageDir != pkg.Dir {
+				return ResolvedPackage{}, fmt.Errorf("multiple main packages found: %q and %q", mainPackageDir, pkg.Dir)
+			}
+			mainPackageDir = pkg.Dir
 		}
-		if pkg.PkgPath != "command-line-arguments" {
+		if pkg.PkgPath == "command-line-arguments" {
+			isCommandLineArguments = true
+		} else {
 			if pkg.Module == nil || !pkg.Module.Main {
 				continue
 			}
 		}
-
+		if pkg.Module != nil && pkg.Module.Main {
+			goModFile = pkg.Module.GoMod
+			moduleName = pkg.Module.Path
+		}
 		for _, file := range pkg.GoFiles {
 			sourceFileSet[file] = true
 		}
 		for _, pattern := range pkg.EmbedPatterns {
 			matches, err := filepath.Glob(pattern)
 			if err != nil {
-				return nil, fmt.Errorf("invalid embed pattern: %q", pattern)
+				return ResolvedPackage{}, fmt.Errorf("invalid embed pattern: %q", pattern)
 			}
 			for _, file := range matches {
 				sourceFileSet[file] = true
 			}
 		}
 	}
-	sourceFiles = lo.Keys(sourceFileSet)
-	sort.Strings(sourceFiles)
-
-	if len(mainPkgs) != 1 {
-		return nil, fmt.Errorf("main packages must be exactly one, got %d", len(mainPkgs))
+	if mainPackageDir == "" {
+		return ResolvedPackage{}, fmt.Errorf("no main package found")
 	}
-
-	return sourceFiles, nil
+	sourceFiles := lo.Keys(sourceFileSet)
+	sort.Strings(sourceFiles)
+	if isCommandLineArguments {
+		if goModFile == "" {
+			return ResolvedPackage{
+				ResolveType: ResolveType_CommandLineArguments,
+				SourceFiles: sourceFiles,
+				PackageDir:  mainPackageDir,
+			}, nil
+		} else {
+			return ResolvedPackage{
+				ResolveType: ResolveType_CommandLineArguments_Module,
+				SourceFiles: sourceFiles,
+				PackageDir:  mainPackageDir,
+				GoModFile:   goModFile,
+				Module:      moduleName,
+			}, nil
+		}
+	} else {
+		return ResolvedPackage{
+			ResolveType: ResolveType_PackageDirectory_Module,
+			SourceFiles: sourceFiles,
+			PackageDir:  mainPackageDir,
+			GoModFile:   goModFile,
+			Module:      moduleName,
+		}, nil
+	}
 }

@@ -97,7 +97,7 @@ func (s *Xtrace) logFileVariable(c *astutil.Cursor, node *ast.GenDecl) {
 	mutable.Reverse(decls)
 	for _, decl := range decls {
 		c.InsertAfter(decl)
-		s.requireImport = true
+		s.libraryRequired = true
 	}
 
 }
@@ -127,7 +127,7 @@ func (s *Xtrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
 	mutable.Reverse(stmts)
 	for _, decl := range stmts {
 		c.InsertAfter(decl)
-		s.requireImport = true
+		s.libraryRequired = true
 	}
 }
 
@@ -147,7 +147,7 @@ func (s *Xtrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
 	mutable.Reverse(stmts)
 	for _, decl := range stmts {
 		c.InsertAfter(decl)
-		s.requireImport = true
+		s.libraryRequired = true
 	}
 
 }
@@ -164,7 +164,7 @@ func (s *Xtrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
 	}
 	body.List = append(vars, body.List...)
 	c.Replace(body)
-	s.requireImport = len(vars) > 0
+	s.libraryRequired = len(vars) > 0
 
 }
 
@@ -185,12 +185,12 @@ func (s *Xtrace) logIfVariables(c *astutil.Cursor, info *IfElseInfo) {
 	if info.Body != nil {
 		info.Body.List = append(stmts, info.Body.List...)
 		c.Replace(info.Body)
-		s.requireImport = len(vars) > 0
+		s.libraryRequired = len(vars) > 0
 	}
 	if info.ElseBody != nil {
 		info.ElseBody.List = append(stmts, info.ElseBody.List...)
 		c.Replace(info.ElseBody)
-		s.requireImport = len(vars) > 0
+		s.libraryRequired = len(vars) > 0
 	}
 }
 
@@ -209,5 +209,5 @@ func (s *Xtrace) logCallVariables(c *astutil.Cursor, info *FuncInfo) {
 	}
 	info.Body.List = append(params, info.Body.List...)
 	c.Replace(info.Body)
-	s.requireImport = true
+	s.libraryRequired = true
 }

@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"math/rand"
 	"strings"
 
 	"github.com/samber/lo/mutable"
@@ -26,68 +25,61 @@ type Config struct {
 	LineWidth    int
 
 	ResolveType ResolveType
-	ModulePath  string
+	ModuleName  string
 }
 
-const alphabet = "abcdefghijklmnopqrstuvwxyz"
-
-func (cfg *Config) GenUniqueString(seed int64) {
-	r := rand.New(rand.NewSource(seed))
-	v := []byte{}
-	for i := 0; i < 8; i++ {
-		v = append(v, alphabet[r.Intn(len(alphabet))])
-	}
-	cfg.UniqueString = string(v)
-}
-
-func (cfg *Config) PackageName() string {
-	if cfg.ResolveType == ResolveTypeCommandLineArguments {
+func (cfg *Config) LibraryPackageName() string {
+	if cfg.ResolveType == ResolveType_CommandLineArguments {
 		return "main"
 	}
 	return "xtracego_" + cfg.UniqueString
 }
 
-func (cfg *Config) ImportPath() string {
-	if cfg.ResolveType == ResolveTypeCommandLineArguments {
+func (cfg *Config) LibraryImportPath() string {
+	if cfg.ResolveType == ResolveType_CommandLineArguments {
 		return ""
 	}
-	return cfg.ModulePath + "/" + cfg.PackageName()
+	return cfg.ModuleName + "/" + cfg.LibraryPackageName()
 }
 
-func (cfg *Config) FileName() string {
+func (cfg *Config) LibraryFileName() string {
 	return "xtracego_" + cfg.UniqueString + ".go"
+}
+
+func (cfg *Config) ExecutableFileName() string {
+	return "main_" + cfg.UniqueString
 }
 
 func (cfg *Config) IdentifierPrintlnStatement() string {
 	funcName := "PrintlnStatement_" + cfg.UniqueString
-	if cfg.ResolveType == ResolveTypeCommandLineArguments {
+	if cfg.ResolveType == ResolveType_CommandLineArguments {
 		return funcName
 	}
-	return cfg.PackageName() + "." + funcName
+	return cfg.LibraryPackageName() + "." + funcName
 }
 
 func (cfg *Config) IdentifierPrintlnVariable() string {
 	funcName := "PrintlnVariable_" + cfg.UniqueString
-	if cfg.ResolveType == ResolveTypeCommandLineArguments {
+	if cfg.ResolveType == ResolveType_CommandLineArguments {
 		return funcName
 	}
-	return cfg.PackageName() + "." + funcName
+	return cfg.LibraryPackageName() + "." + funcName
 }
 
 func (cfg *Config) IdentifierPrintlnCall() string {
 	funcName := "PrintlnCall_" + cfg.UniqueString
-	if cfg.ResolveType == ResolveTypeCommandLineArguments {
+	if cfg.ResolveType == ResolveType_CommandLineArguments {
 		return funcName
 	}
-	return cfg.PackageName() + "." + funcName
+	return cfg.LibraryPackageName() + "." + funcName
 }
 
 func (cfg *Config) IdentifierPrintlnReturn() string {
 	funcName := "PrintlnReturn_" + cfg.UniqueString
-	if cfg.ResolveType == ResolveTypeCommandLineArguments {
+	if cfg.ResolveType == ResolveType_CommandLineArguments {
 		return funcName
 	}
-	return cfg.PackageName() + "." + funcName
+	return cfg.LibraryPackageName() + "." + funcName
 }
 
 func ProcessCode(config Config, filename string, src []byte) (dst []byte, err error) {
@@ -177,8 +169,8 @@ func ProcessCode(config Config, filename string, src []byte) (dst []byte, err er
 		return true
 	})
 
-	if s.requireImport {
-		astutil.AddImport(fset, f, config.ImportPath())
+	if s.libraryRequired && s.ResolveType != ResolveType_CommandLineArguments {
+		astutil.AddImport(fset, f, config.LibraryImportPath())
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -199,7 +191,7 @@ type Xtrace struct {
 	caseByBody   map[ast.Stmt]*CaseInfo
 	ifElseByBody map[ast.Stmt]*IfElseInfo
 
-	requireImport bool
+	libraryRequired bool
 }
 
 func (s *Xtrace) fragment(pos, end token.Pos) string {

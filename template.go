@@ -7,7 +7,7 @@ import (
 )
 
 var xtraceGo string = `
-package {{if .UniqueString}}xtracego_{{.UniqueString}}{{else}}main{{end}}
+package {{.PackageName}}
 
 import (
 	"bytes"
@@ -62,11 +62,12 @@ func PrintlnReturn_{{.UniqueString}}(showTimestamp, showGoroutine bool) {
 var xtraceGoTemplate = template.Must(template.New("xtrace.go.tpl").Parse(xtraceGo))
 
 type XtraceGoData struct {
+	PackageName  string
 	UniqueString string
 }
 
-func GetXtraceGo(uniqueString string, w io.Writer) (err error) {
-	d := XtraceGoData{UniqueString: uniqueString}
+func GetLibraryCode(packageName, uniqueString string, w io.Writer) (err error) {
+	d := XtraceGoData{PackageName: packageName, UniqueString: uniqueString}
 	if err := xtraceGoTemplate.Execute(w, d); err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)
 	}
