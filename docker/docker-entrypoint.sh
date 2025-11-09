@@ -5,5 +5,5 @@ set -eux
 if [ "$1" = 'xtracego' ]; then
     exec "$@"
 else
-    exec cyamli "$@"
+    exec xtracego "$@"
 fi

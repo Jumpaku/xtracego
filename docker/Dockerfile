@@ -5,7 +5,7 @@ ARG XTRACEGO_VERSION=latest
 RUN go install "github.com/Jumpaku/xtracego/cmd/xtracego@$XTRACEGO_VERSION"
 
 
-FROM busybox:stable-musl
+FROM golang:1.25.0-alpine3.22
 
 COPY --from=builder /go/bin/xtracego /bin/xtracego
 COPY docker-entrypoint.sh /docker-entrypoint.sh
