@@ -1,6 +1,19 @@
 # xtracego
 
-xtracego is a command-line tool to run Go source code injecting xtrace.
+xtracego is a command-line tool that executes Go source code with automatically injected execution traces (xtrace).
+It aims to provide an easy debugging and logging experience similar to `set -x` in shell scripts.
+
+## Features
+
+- Run: Execute Go source files directly with injected traces.
+- Build: Compile source files into an executable with injected traces.
+- Rewrite: Generate modified source files with injected traces.
+
+The following execution trace information is available:
+
+- Execution of basic statements
+- Function and method calls
+- Values of variables and constants
 
 ## Example
 
@@ -73,23 +86,38 @@ Fizz
 ...
 ```
 
-## Features
+Examples are available in `examples` ( https://github.com/Jumpaku/xtracego/tree/main/examples ).
 
-- Run Go source files directly with injected xtrace.
-- Build an executable file from source files with injected xtrace.
-- Rewrite source files to inject xtrace.
+## Motivation
 
-### Xtrace
+The goal of xtracego is to facilitate easy debugging and logging for Go scripts by providing execution traces similar to `set -x` in shell scripts.
+Shell scripts offer the convenient `set -x` that prints each command to stderr before execution, which is useful for debugging and logging.
+For example, if you have the following shell script:
+```shell
+#!/bin/sh
+set -x
+pwd
+echo "Hello, world!"
+```
+executing `sh setx.sh` outputs:
+```
+# +pwd
+# /path/to/working/directory
+# +echo "Hello, world!"
+# Hello, world!
+```
 
-Xtrace is execution trace information. The following traces are available:
+When it comes to Go scripting, the conventional debugging or logging techniques have the following drawbacks:
+- `log.Println`: which is very simple but very tedious.
+- Stacktrace: which shows call stacks and where the panic occurred but does not show execution flow and contents of variables.
+- Debuggers: which are useful for debugging but cannot be used for logging.
 
-- Traces of basic statements
-- Traces of function and method calls
-- Traces of variables and constants
+To overcome these drawbacks, xtracego automatically injects execution traces by modifying the abstract syntax tree (AST) of the source files.
+Therefore, xtracego allow you to debug or log as easy as using `set -x`.
 
 ## Installation
 
-### Using Go
+### Using Go install
 
 ```shell
 go install github.com/Jumpaku/xtracego/cmd/xtracego@latest
@@ -117,19 +145,19 @@ go install ./cmd/xtracego
 
 ## Usage
 
-### Run Go source files directly with injected xtrace
+### Run Go source files with xtrace
 
 ```sh
 xtracego run ./path/to/package
 ```
 
-### Build an executable file from source files with injected xtrace
+### Build an executable file from source files with xtrace
 
 ```sh
 xtracego build -o=build_dir ./path/to/package
 ```
 
-### Rewrite source files to inject xtrace
+### Generate source files injected xtrace
 
 ```sh
 xtracego rewrite -o=out_dir ./path/to/package
@@ -139,10 +167,11 @@ xtracego rewrite -o=out_dir ./path/to/package
 
 ### Command-line interface
 
-See detailed CLI documentation:
+For detailed CLI usage, please see:
 
 https://github.com/Jumpaku/xtracego/blob/main/docs/xtracego.md
 
 ## Limitation
 
-- Comments are not handled; therefore, compiler directives (e.g., `//go:embed`) are ignored.
+- Comments are not preserved during the AST rewriting process. 
+  Therefore, compiler directives (e.g., `//go:embed`) are ignored, which may affect builds relying on them.
