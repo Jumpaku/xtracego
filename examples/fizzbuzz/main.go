@@ -1,3 +1,5 @@
+//go:build ignore
+
 // examples/fizzbuzz/main.go
 package main
 
