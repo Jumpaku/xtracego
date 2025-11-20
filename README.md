@@ -109,12 +109,12 @@ executing `sh setx.sh` outputs:
 ```
 
 When it comes to Go scripting, the conventional debugging or logging techniques have the following drawbacks:
-- `log.Println`: which is very simple but very tedious.
-- Stacktrace: which shows call stacks and where the panic occurred but does not show execution flow and contents of variables.
-- Debuggers: which are useful for debugging but cannot be used for logging.
+- `log.Println`: Simple but tedious to insert manually everywhere.
+- Stacktrace: Shows where a panic occurred but lacks execution flow and variable history.
+- Debuggers: Powerful for interactive debugging but not suitable for logging execution history.
 
 To overcome these drawbacks, xtracego automatically injects execution traces by modifying the abstract syntax tree (AST) of the source files.
-Therefore, xtracego allow you to debug or log as easy as using `set -x`.
+Therefore, xtracego makes debugging and logging in Go scripting as easy as using `set -x`.
 
 ## Installation
 
