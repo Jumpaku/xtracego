@@ -79,12 +79,20 @@ func PrintlnReturnVariable_{{.UniqueString}}(stack int, width int, varName strin
 
 func PrintlnCall_{{.UniqueString}}(width int, signature string, showTimestamp, showGoroutine bool) {
 	prefix := getPrefix(3, showTimestamp, showGoroutine)
-	_, _ = fmt.Fprintln(os.Stderr, prefix+"[CALL] " + signature)
+	callStr := prefix + "[CALL] " + signature
+	if len(callStr) >= width {
+		callStr = callStr[:width-4] + " ..."
+	}
+	_, _ = fmt.Fprintln(os.Stderr, callStr)
 }
 
 func PrintlnReturn_{{.UniqueString}}(width int, signature string, showTimestamp, showGoroutine bool) {
 	prefix := getPrefix(3, showTimestamp, showGoroutine)
-	_, _ = fmt.Fprintln(os.Stderr, prefix+"[RETURN] " + signature)
+	returnStr := prefix + "[CALL] " + signature
+	if len(returnStr) >= width {
+		returnStr = returnStr[:width-4] + " ..."
+	}
+	_, _ = fmt.Fprintln(os.Stderr, returnStr)
 }
 `
 

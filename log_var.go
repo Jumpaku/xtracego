@@ -66,11 +66,11 @@ func (s *Xtrace) newVariableLogStmt(stack int, name string, shadowed bool) ast.S
 }
 func (s *Xtrace) newReturnVariableLogStmt(number int, name string) ast.Stmt {
 	// defer func () { PrintlnVariable("VarName", VarName)) }
-	// defer func () { PrintlnVariable("(return 1)", var_abcdefg_1)) }
+	// defer func () { PrintlnVariable("<return_1>", return_1_abcdefg)) }
 	varName := name
 	if name == "" {
-		name = fmt.Sprintf("(return_%d)", number)
-		varName = fmt.Sprintf("var_%s_%d", s.UniqueString, number)
+		name = fmt.Sprintf("<return_%d>", number)
+		varName = fmt.Sprintf("return_%d_%s", number, s.UniqueString)
 	}
 	return &ast.DeferStmt{
 		Call: &ast.CallExpr{

@@ -134,12 +134,12 @@ func ProcessCode(config Config, filename string, src []byte) (dst []byte, err er
 				for _, param := range results.List {
 					if len(param.Names) == 0 {
 						count++
-						param.Names = []*ast.Ident{ast.NewIdent(fmt.Sprintf("var_%s_%d", s.UniqueString, count))}
+						param.Names = []*ast.Ident{ast.NewIdent(fmt.Sprintf("return_%d_%s", count, s.UniqueString))}
 					} else {
 						for _, name := range param.Names {
 							count++
 							if name.Name == "_" {
-								name.Name = fmt.Sprintf("var_%s_%d", s.UniqueString, count)
+								name.Name = fmt.Sprintf("return_%d_%s", count, s.UniqueString)
 							}
 						}
 					}

@@ -200,11 +200,11 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 }
 
 func getTermWidth(termWidth int, isRun bool) int {
-	if termWidth == 0 && isRun {
+	if termWidth < 4 && isRun {
 		termWidth, _, _ = term.GetSize(int(os.Stderr.Fd()))
 	}
-	if termWidth == 0 {
-		termWidth = 80 // default value for terminal width
+	if termWidth < 4 {
+		termWidth = 200 // default value for terminal width
 	}
 	return termWidth
 }
