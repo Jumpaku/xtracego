@@ -54,26 +54,26 @@ xtracego run ./examples/fizzbuzz
 Got trace output from stderr:
 
 ```
-2025-11-03T11:55:22Z [ 1] :const N = 20 ............................. [ /path/to/examples/fizzbuzz/main.go:6:7 ]
-2025-11-03T11:55:22Z [ 1] :[VAR] N=20
-2025-11-03T11:55:22Z [ 1] :[CALL] (main.main)
-2025-11-03T11:55:22Z [ 1] :    for i := 1; i <= N; i++ { ............ [ /path/to/examples/fizzbuzz/main.go:9:2 ]
-2025-11-03T11:55:22Z [ 1] :[VAR] i=1
-2025-11-03T11:55:22Z [ 1] :        if i%15 == 0 { ................... [ /path/to/examples/fizzbuzz/main.go:10:3 ]
-2025-11-03T11:55:22Z [ 1] :        } else if i%3 == 0 { ............. [ /path/to/examples/fizzbuzz/main.go:12:10 ]
-2025-11-03T11:55:22Z [ 1] :        } else if i%5 == 0 { ............. [ /path/to/examples/fizzbuzz/main.go:14:10 ]
-2025-11-03T11:55:22Z [ 1] :        } else { ......................... [ /path/to/examples/fizzbuzz/main.go:16:3 ]
-2025-11-03T11:55:22Z [ 1] :            fmt.Println(i) ............... [ /path/to/examples/fizzbuzz/main.go:17:4 ]
-2025-11-03T11:55:22Z [ 1] :[VAR] i=2
-2025-11-03T11:55:22Z [ 1] :        if i%15 == 0 { ................... [ /path/to/examples/fizzbuzz/main.go:10:3 ]
-2025-11-03T11:55:22Z [ 1] :        } else if i%3 == 0 { ............. [ /path/to/examples/fizzbuzz/main.go:12:10 ]
-2025-11-03T11:55:22Z [ 1] :        } else if i%5 == 0 { ............. [ /path/to/examples/fizzbuzz/main.go:14:10 ]
-2025-11-03T11:55:22Z [ 1] :        } else { ......................... [ /path/to/examples/fizzbuzz/main.go:16:3 ]
-2025-11-03T11:55:22Z [ 1] :            fmt.Println(i) ............... [ /path/to/examples/fizzbuzz/main.go:17:4 ]
-2025-11-03T11:55:22Z [ 1] :[VAR] i=3
-2025-11-03T11:55:22Z [ 1] :        if i%15 == 0 { ................... [ /path/to/examples/fizzbuzz/main.go:10:3 ]
-2025-11-03T11:55:22Z [ 1] :        } else if i%3 == 0 { ............. [ /path/to/examples/fizzbuzz/main.go:12:10 ]
-2025-11-03T11:55:22Z [ 1] :            fmt.Println("Fizz") .......... [ /path/to/examples/fizzbuzz/main.go:13:4 ]
+2025-12-13T20:47:07Z [ 1] main.init: const N = 20 ------------------------------------ /path/to/examples/fizzbuzz/main.go:8:7
+2025-12-13T20:47:07Z [ 1] main.init: [VAR] N=20
+2025-12-13T20:47:07Z [ 1] main.main: [CALL] func main()
+2025-12-13T20:47:07Z [ 1] main.main:     for i := 1; i <= N; i++ { ------------------ /path/to/examples/fizzbuzz/main.go:11:2
+2025-12-13T20:47:07Z [ 1] main.main: [VAR] i=1
+2025-12-13T20:47:07Z [ 1] main.main:         if i%15 == 0 { ------------------------- /path/to/examples/fizzbuzz/main.go:12:3
+2025-12-13T20:47:07Z [ 1] main.main:         } else if i%3 == 0 { ------------------ /path/to/examples/fizzbuzz/main.go:14:10
+2025-12-13T20:47:07Z [ 1] main.main:         } else if i%5 == 0 { ------------------ /path/to/examples/fizzbuzz/main.go:16:10
+2025-12-13T20:47:07Z [ 1] main.main:         } else { ------------------------------- /path/to/examples/fizzbuzz/main.go:18:3
+2025-12-13T20:47:07Z [ 1] main.main:             fmt.Println(i) --------------------- /path/to/examples/fizzbuzz/main.go:19:4
+2025-12-13T20:47:07Z [ 1] main.main: [VAR] i=2
+2025-12-13T20:47:07Z [ 1] main.main:         if i%15 == 0 { ------------------------- /path/to/examples/fizzbuzz/main.go:12:3
+2025-12-13T20:47:07Z [ 1] main.main:         } else if i%3 == 0 { ------------------ /path/to/examples/fizzbuzz/main.go:14:10
+2025-12-13T20:47:07Z [ 1] main.main:         } else if i%5 == 0 { ------------------ /path/to/examples/fizzbuzz/main.go:16:10
+2025-12-13T20:47:07Z [ 1] main.main:         } else { ------------------------------- /path/to/examples/fizzbuzz/main.go:18:3
+2025-12-13T20:47:07Z [ 1] main.main:             fmt.Println(i) --------------------- /path/to/examples/fizzbuzz/main.go:19:4
+2025-12-13T20:47:07Z [ 1] main.main: [VAR] i=3
+2025-12-13T20:47:07Z [ 1] main.main:         if i%15 == 0 { ------------------------- /path/to/examples/fizzbuzz/main.go:12:3
+2025-12-13T20:47:07Z [ 1] main.main:         } else if i%3 == 0 { ------------------ /path/to/examples/fizzbuzz/main.go:14:10
+2025-12-13T20:47:07Z [ 1] main.main:             fmt.Println("Fizz") ---------------- /path/to/examples/fizzbuzz/main.go:15:4
 ...
 ```
 
@@ -176,3 +176,4 @@ https://github.com/Jumpaku/xtracego/blob/main/docs/xtracego.md
 
 - Comments are not preserved during the AST rewriting process. 
   Therefore, compiler directives (e.g., `//go:embed`) are ignored, which may affect builds relying on them.
+

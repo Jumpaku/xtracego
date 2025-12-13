@@ -22,6 +22,9 @@ xtracego [<option>]...
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
 
+* `-help[=<boolean>]`, `-h[=<boolean>]`  (default=`false`):  
+  Prints help message.  
+
 * `-seed=<integer>`  (default=`0`):  
   Random seed for reproducibility of rewritten source files.  
   If not specified, the seed is generated randomly.  
@@ -101,6 +104,9 @@ xtracego build [<option>|<argument>]... [-- [<argument>]...]
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
 
+* `-help[=<boolean>]`, `-h[=<boolean>]`  (default=`false`):  
+  Prints help message.  
+
 * `-seed=<integer>`  (default=`0`):  
   Random seed for reproducibility of rewritten source files.  
   If not specified, the seed is generated randomly.  
@@ -159,6 +165,9 @@ xtracego rewrite [<option>|<argument>]... [-- [<argument>]...]
 * `-goroutine[=<boolean>]`  (default=`true`),  
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
+
+* `-help[=<boolean>]`, `-h[=<boolean>]`  (default=`false`):  
+  Prints help message.  
 
 * `-output-directory=<string>`, `-o=<string>`  (default=`""`):  
   Output directory to place the rewritten source files of the package.  
@@ -232,6 +241,9 @@ xtracego run [<option>|<argument>]... [-- [<argument>]...]
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
 
+* `-help[=<boolean>]`, `-h[=<boolean>]`  (default=`false`):  
+  Prints help message.  
+
 * `-seed=<integer>`  (default=`0`):  
   Random seed for reproducibility of rewritten source files.  
   If not specified, the seed is generated randomly.  
@@ -254,6 +266,9 @@ xtracego run [<option>|<argument>]... [-- [<argument>]...]
 
 * `-verbose[=<boolean>]`, `-v[=<boolean>]`  (default=`false`):  
   Whether to output verbose messages or not.  
+
+* `-width=<integer>`, `-w=<integer>`  (default=`0`):  
+  Terminal width to be used for formatting trace messages.  
 
 ### Arguments
 
@@ -291,6 +306,9 @@ xtracego version [<option>]...
 * `-goroutine[=<boolean>]`  (default=`true`),  
   `-no-goroutine[=<boolean>]`:  
   Whether show goroutine ID or not.  
+
+* `-help[=<boolean>]`, `-h[=<boolean>]`  (default=`false`):  
+  Prints help message.  
 
 * `-seed=<integer>`  (default=`0`):  
   Random seed for reproducibility of rewritten source files.  

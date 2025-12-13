@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"slices"
 
 	"github.com/samber/lo/mutable"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func (s *Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
+func (s *Xtrace) newVariableLogStmt(stack int, name string, shadowed bool) ast.Stmt {
 	// PrintlnVariable("VarName", VarName))
 	// PrintlnVariable("VarName", "<shadowed>"))
 	if shadowed {
@@ -18,12 +19,20 @@ func (s *Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 				Fun: ast.NewIdent(s.IdentifierPrintlnVariable()),
 				Args: []ast.Expr{
 					&ast.BasicLit{
+						Kind:  token.INT,
+						Value: fmt.Sprintf(`%d`, stack),
+					},
+					&ast.BasicLit{
+						Kind:  token.INT,
+						Value: fmt.Sprintf(`%d`, s.LineWidth),
+					},
+					&ast.BasicLit{
 						Kind:  token.STRING,
 						Value: fmt.Sprintf("%q", name),
 					},
 					&ast.BasicLit{
 						Kind:  token.STRING,
-						Value: fmt.Sprintf("%q", "<shadowed>"),
+						Value: `"<shadowed>"`,
 					},
 					&ast.Ident{Name: s.IdentShowTimestamp()},
 					&ast.Ident{Name: s.IdentShowGoroutine()},
@@ -36,6 +45,14 @@ func (s *Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 				Fun: ast.NewIdent(s.IdentifierPrintlnVariable()),
 				Args: []ast.Expr{
 					&ast.BasicLit{
+						Kind:  token.INT,
+						Value: fmt.Sprintf(`%d`, stack),
+					},
+					&ast.BasicLit{
+						Kind:  token.INT,
+						Value: fmt.Sprintf(`%d`, s.LineWidth),
+					},
+					&ast.BasicLit{
 						Kind:  token.STRING,
 						Value: fmt.Sprintf("%q", name),
 					},
@@ -45,6 +62,48 @@ func (s *Xtrace) newVariableLogStmt(name string, shadowed bool) ast.Stmt {
 				},
 			},
 		}
+	}
+}
+func (s *Xtrace) newReturnVariableLogStmt(number int, name string) ast.Stmt {
+	// defer func () { PrintlnVariable("VarName", VarName)) }
+	// defer func () { PrintlnVariable("<return_1>", return_1_abcdefg)) }
+	varName := name
+	if name == "" {
+		name = fmt.Sprintf("<return_%d>", number)
+		varName = fmt.Sprintf("return_%d_%s", number, s.UniqueString)
+	}
+	return &ast.DeferStmt{
+		Call: &ast.CallExpr{
+			Fun: &ast.FuncLit{
+				Type: &ast.FuncType{},
+				Body: &ast.BlockStmt{
+					List: []ast.Stmt{
+						&ast.ExprStmt{
+							X: &ast.CallExpr{
+								Fun: ast.NewIdent(s.IdentifierPrintlnReturnVariable()),
+								Args: []ast.Expr{
+									&ast.BasicLit{
+										Kind:  token.INT,
+										Value: fmt.Sprintf(`%d`, 4),
+									},
+									&ast.BasicLit{
+										Kind:  token.INT,
+										Value: fmt.Sprintf(`%d`, s.LineWidth),
+									},
+									&ast.BasicLit{
+										Kind:  token.STRING,
+										Value: fmt.Sprintf("%q", name),
+									},
+									&ast.Ident{Name: varName},
+									&ast.Ident{Name: s.IdentShowTimestamp()},
+									&ast.Ident{Name: s.IdentShowGoroutine()},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -64,7 +123,7 @@ func (s *Xtrace) newVariableLogDecl(name string, shadowed bool) *ast.GenDecl {
 							Type: &ast.FuncType{Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("int")}}}},
 							Body: &ast.BlockStmt{
 								List: []ast.Stmt{
-									s.newVariableLogStmt(name, shadowed),
+									s.newVariableLogStmt(4, name, shadowed),
 									&ast.ReturnStmt{Results: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "0"}}},
 								},
 							},
@@ -121,7 +180,7 @@ func (s *Xtrace) logLocalVariable(c *astutil.Cursor, node *ast.DeclStmt) {
 			if name.Name == "_" {
 				continue
 			}
-			stmts = append(stmts, s.newVariableLogStmt(name.Name, false))
+			stmts = append(stmts, s.newVariableLogStmt(3, name.Name, false))
 		}
 	}
 	mutable.Reverse(stmts)
@@ -142,7 +201,7 @@ func (s *Xtrace) logLocalAssignment(c *astutil.Cursor, node *ast.AssignStmt) {
 		if !ok || ident.Name == "_" {
 			continue
 		}
-		stmts = append(stmts, s.newVariableLogStmt(ident.Name, false))
+		stmts = append(stmts, s.newVariableLogStmt(3, ident.Name, false))
 	}
 	mutable.Reverse(stmts)
 	for _, decl := range stmts {
@@ -160,7 +219,7 @@ func (s *Xtrace) logForVariables(c *astutil.Cursor, info *ForInfo) {
 	body := info.Body
 	vars := []ast.Stmt{}
 	for _, ident := range info.Variables() {
-		vars = append(vars, s.newVariableLogStmt(ident.Name, false))
+		vars = append(vars, s.newVariableLogStmt(3, ident.Name, false))
 	}
 	body.List = append(vars, body.List...)
 	c.Replace(body)
@@ -177,7 +236,7 @@ func (s *Xtrace) logIfVariables(c *astutil.Cursor, info *IfElseInfo) {
 	shadow := map[string]bool{}
 	stmts := []ast.Stmt{}
 	for i := len(vars) - 1; i >= 0; i-- {
-		stmts = append(stmts, s.newVariableLogStmt(vars[i].Name, shadow[vars[i].Name]))
+		stmts = append(stmts, s.newVariableLogStmt(3, vars[i].Name, shadow[vars[i].Name]))
 		shadow[vars[i].Name] = true
 	}
 	mutable.Reverse(stmts)
@@ -195,18 +254,57 @@ func (s *Xtrace) logIfVariables(c *astutil.Cursor, info *IfElseInfo) {
 }
 
 func (s *Xtrace) logCallVariables(c *astutil.Cursor, info *FuncInfo) {
-	if !s.TraceCall {
-		return
+	fields := []*ast.Field{}
+	if info.FuncDecl != nil {
+		fields = info.FuncDecl.Type.Params.List
 	}
+	if info.FuncLit != nil {
+		fields = info.FuncLit.Type.Params.List
+	}
+
 	params := []ast.Stmt{}
-	for _, param := range info.FuncDecl.Type.Params.List {
+	for _, param := range fields {
 		for _, name := range param.Names {
 			if name.Name == "_" {
 				continue
 			}
-			params = append(params, s.newVariableLogStmt(name.Name, false))
+			params = append(params, s.newVariableLogStmt(3, name.Name, false))
 		}
 	}
+
+	info.Body.List = append(params, info.Body.List...)
+	c.Replace(info.Body)
+	s.libraryRequired = true
+}
+
+func (s *Xtrace) logReturnVariables(c *astutil.Cursor, info *FuncInfo) {
+	fields := []*ast.Field{}
+	if info.FuncDecl != nil && info.FuncDecl.Type.Results != nil {
+		fields = info.FuncDecl.Type.Results.List
+	}
+	if info.FuncLit != nil && info.FuncLit.Type.Results != nil {
+		fields = info.FuncLit.Type.Results.List
+	}
+
+	params := []ast.Stmt{}
+	count := 0
+	for _, param := range fields {
+		if len(param.Names) == 0 {
+			count++
+			params = append(params, s.newReturnVariableLogStmt(count, ""))
+		} else {
+			for _, name := range param.Names {
+				varName := name.Name
+				if varName == "_" {
+					varName = ""
+				}
+				count++
+				params = append(params, s.newReturnVariableLogStmt(count, varName))
+			}
+		}
+	}
+
+	slices.Reverse(params)
 	info.Body.List = append(params, info.Body.List...)
 	c.Replace(info.Body)
 	s.libraryRequired = true

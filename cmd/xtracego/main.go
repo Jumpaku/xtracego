@@ -17,6 +17,7 @@ import (
 	"github.com/Jumpaku/xtracego"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/term"
 )
 
 //go:generate cyamli generate golang -schema-path=cli.cyamli.yaml -out-path=cli.gen.go
@@ -68,6 +69,14 @@ func (h *cliHandler) Run(input Input) error {
 }
 
 func (h *cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
+	if input.Opt_Help {
+		fmt.Println(GetDoc(input.Subcommand))
+		return nil
+	}
+	if input.ErrorMessage != "" {
+		log.Panicln(input.ErrorMessage)
+	}
+
 	h.verbose = input.Opt_Verbose
 
 	outDir := requireOption(input.Subcommand, "-output-directory", input.Opt_OutputDirectory)
@@ -83,6 +92,7 @@ func (h *cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 		ResolveType:   pkg.ResolveType,
 		ModuleName:    pkg.Module,
 		UniqueString:  generateUniqueString(input.Opt_Seed),
+		LineWidth:     getTermWidth(0, false),
 	}
 
 	h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot)
@@ -97,6 +107,14 @@ func (h *cliHandler) Run_Rewrite(input Input_Rewrite) (err error) {
 }
 
 func (h cliHandler) Run_Build(input Input_Build) (err error) {
+	if input.Opt_Help {
+		fmt.Println(GetDoc(input.Subcommand))
+		return nil
+	}
+	if input.ErrorMessage != "" {
+		log.Panicln(input.ErrorMessage)
+	}
+
 	h.verbose = input.Opt_Verbose
 
 	outDir := requireOption(input.Subcommand, "-build-directory", input.Opt_BuildDirectory)
@@ -112,6 +130,7 @@ func (h cliHandler) Run_Build(input Input_Build) (err error) {
 		ResolveType:   pkg.ResolveType,
 		ModuleName:    pkg.Module,
 		UniqueString:  generateUniqueString(input.Opt_Seed),
+		LineWidth:     getTermWidth(0, false),
 	}
 
 	h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot)
@@ -131,6 +150,14 @@ func (h cliHandler) Run_Build(input Input_Build) (err error) {
 }
 
 func (h cliHandler) Run_Run(input Input_Run) error {
+	if input.Opt_Help {
+		fmt.Println(GetDoc(input.Subcommand))
+		return nil
+	}
+	if input.ErrorMessage != "" {
+		log.Panicln(input.ErrorMessage)
+	}
+
 	h.verbose = input.Opt_Verbose
 
 	outDir, err := os.MkdirTemp("", "xtracego_*")
@@ -148,6 +175,7 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 		ResolveType:   pkg.ResolveType,
 		ModuleName:    pkg.Module,
 		UniqueString:  generateUniqueString(input.Opt_Seed),
+		LineWidth:     getTermWidth(int(input.Opt_Width), true),
 	}
 
 	h.transformSourceFiles(cfg, pkg, outDir, input.Opt_CopyOnly, input.Opt_CopyOnlyNot)
@@ -169,6 +197,16 @@ func (h cliHandler) Run_Run(input Input_Run) error {
 	h.execBuiltFile(input, execFile)
 
 	return nil
+}
+
+func getTermWidth(termWidth int, isRun bool) int {
+	if termWidth < 4 && isRun {
+		termWidth, _, _ = term.GetSize(int(os.Stderr.Fd()))
+	}
+	if termWidth < 4 {
+		termWidth = 200 // default value for terminal width
+	}
+	return termWidth
 }
 
 func generateUniqueString(seed int64) string {

@@ -10,20 +10,28 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func (s *Xtrace) newStatementLogStmt(pos token.Position, fragment string) ast.Stmt {
-	// PrintlnStatement(`if a == 1 { [ path/to/source.go:123:45 ]`)
+func (s *Xtrace) newStatementLogStmt(stack int, pos token.Position, fragment string) ast.Stmt {
+	// PrintlnStatement(`if a == 1 { ...... path/to/source.go:123:45`)
 	line := strings.ReplaceAll(fragment, "\t", "    ") + " "
-	if len(line) < s.LineWidth {
-		line += strings.Repeat(".", s.LineWidth-len(line))
-	}
-	line += fmt.Sprintf(" [ %s:%d:%d ]", pos.Filename, pos.Line, pos.Column)
 	return &ast.ExprStmt{
 		X: &ast.CallExpr{
 			Fun: ast.NewIdent(s.IdentifierPrintlnStatement()),
 			Args: []ast.Expr{
 				&ast.BasicLit{
+					Kind:  token.INT,
+					Value: fmt.Sprintf(`%d`, stack),
+				},
+				&ast.BasicLit{
+					Kind:  token.INT,
+					Value: fmt.Sprintf(`%d`, s.LineWidth),
+				},
+				&ast.BasicLit{
 					Kind:  token.STRING,
 					Value: fmt.Sprintf("%q", line),
+				},
+				&ast.BasicLit{
+					Kind:  token.STRING,
+					Value: fmt.Sprintf("%q", fmt.Sprintf(" %s:%d:%d", pos.Filename, pos.Line, pos.Column)),
 				},
 				&ast.Ident{Name: s.IdentShowTimestamp()},
 				&ast.Ident{Name: s.IdentShowGoroutine()},
@@ -32,9 +40,9 @@ func (s *Xtrace) newStatementLogStmt(pos token.Position, fragment string) ast.St
 	}
 }
 
-func (s *Xtrace) newStatementLogDecl(pos token.Position, fragment string) *ast.GenDecl {
+func (s *Xtrace) newStatementLogDecl(stack int, pos token.Position, fragment string) *ast.GenDecl {
 	//var _ = func() int {
-	//	log.Println(fmt.Sprintf(`if a == 1 { /* path/to/source.go:123:45 */`))
+	//	log.Println(fmt.Sprintf(`if a == 1 { ...... [ path/to/source.go:123:45 ]`))
 	//	return 0
 	//}()
 	return &ast.GenDecl{
@@ -48,7 +56,7 @@ func (s *Xtrace) newStatementLogDecl(pos token.Position, fragment string) *ast.G
 							Type: &ast.FuncType{Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("int")}}}},
 							Body: &ast.BlockStmt{
 								List: []ast.Stmt{
-									s.newStatementLogStmt(pos, fragment),
+									s.newStatementLogStmt(stack, pos, fragment),
 									&ast.ReturnStmt{Results: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "0"}}},
 								},
 							},
@@ -72,7 +80,7 @@ func (s *Xtrace) logFileStatement(c *astutil.Cursor, node *ast.GenDecl) {
 		}
 		pos := s.fset.Position(spec.Pos())
 		frag := s.fragmentLine(spec.Pos())
-		c.InsertBefore(s.newStatementLogDecl(pos, frag))
+		c.InsertBefore(s.newStatementLogDecl(4, pos, frag))
 		s.libraryRequired = true
 	}
 }
@@ -152,7 +160,7 @@ func (s *Xtrace) tryLogLocalStatement(c *astutil.Cursor, node ast.Stmt) {
 
 	pos := s.fset.Position(node.Pos())
 	frag := s.fragmentLine(node.Pos())
-	c.InsertBefore(s.newStatementLogStmt(pos, frag))
+	c.InsertBefore(s.newStatementLogStmt(3, pos, frag))
 	s.libraryRequired = true
 }
 
@@ -167,14 +175,14 @@ func (s *Xtrace) logIfElseStatement(c *astutil.Cursor, info *IfElseInfo) {
 			continue
 		}
 		frag := s.fragmentLine(ifStmt.If)
-		stmts = append(stmts, s.newStatementLogStmt(s.fset.Position(ifStmt.If), frag))
+		stmts = append(stmts, s.newStatementLogStmt(3, s.fset.Position(ifStmt.If), frag))
 	}
 	if len(info.Parents) > 0 {
 		frag := s.fragmentLine(info.IfStmt.If)
-		stmts = append(stmts, s.newStatementLogStmt(s.fset.Position(info.IfStmt.If), frag))
+		stmts = append(stmts, s.newStatementLogStmt(3, s.fset.Position(info.IfStmt.If), frag))
 		if info.ElseBody != nil {
 			frag := s.fragmentLine(info.IfStmt.Body.Rbrace)
-			stmts = append(stmts, s.newStatementLogStmt(s.fset.Position(info.IfStmt.Body.Rbrace), frag))
+			stmts = append(stmts, s.newStatementLogStmt(3, s.fset.Position(info.IfStmt.Body.Rbrace), frag))
 		}
 	}
 	if info.Body != nil {
@@ -196,14 +204,14 @@ func (s *Xtrace) logCaseStatement(c *astutil.Cursor, info *CaseInfo) {
 
 	if info.Case != nil {
 		frag := s.fragmentLine(info.Case.Case)
-		stmt := s.newStatementLogStmt(s.fset.Position(info.Case.Case), frag)
+		stmt := s.newStatementLogStmt(3, s.fset.Position(info.Case.Case), frag)
 		info.Case.Body = append([]ast.Stmt{stmt}, info.Case.Body...)
 		c.Replace(info.Case)
 		s.libraryRequired = true
 	}
 	if info.Comm != nil {
 		frag := s.fragmentLine(info.Comm.Case)
-		stmt := s.newStatementLogStmt(s.fset.Position(info.Comm.Case), frag)
+		stmt := s.newStatementLogStmt(3, s.fset.Position(info.Comm.Case), frag)
 		info.Comm.Body = append([]ast.Stmt{stmt}, info.Comm.Body...)
 		c.Replace(info.Comm)
 		s.libraryRequired = true

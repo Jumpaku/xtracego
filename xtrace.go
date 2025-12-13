@@ -66,6 +66,14 @@ func (cfg *Config) IdentifierPrintlnVariable() string {
 	return cfg.LibraryPackageName() + "." + funcName
 }
 
+func (cfg *Config) IdentifierPrintlnReturnVariable() string {
+	funcName := "PrintlnReturnVariable_" + cfg.UniqueString
+	if cfg.ResolveType == ResolveType_CommandLineArguments {
+		return funcName
+	}
+	return cfg.LibraryPackageName() + "." + funcName
+}
+
 func (cfg *Config) IdentifierPrintlnCall() string {
 	funcName := "PrintlnCall_" + cfg.UniqueString
 	if cfg.ResolveType == ResolveType_CommandLineArguments {
@@ -89,7 +97,6 @@ func ProcessCode(config Config, filename string, src []byte) (dst []byte, err er
 		return nil, fmt.Errorf("failed to parse: %w", err)
 	}
 
-	config.LineWidth = 80
 	s := &Xtrace{
 		Config: config,
 		fset:   fset,
@@ -114,10 +121,36 @@ func ProcessCode(config Config, filename string, src []byte) (dst []byte, err er
 				s.logFileStatement(c, node)
 				s.logFileVariable(c, node)
 			}
+		case *ast.FuncLit, *ast.FuncDecl:
+			var results *ast.FieldList
+			switch node := node.(type) {
+			case *ast.FuncLit:
+				results = node.Type.Results
+			case *ast.FuncDecl:
+				results = node.Type.Results
+			}
+			if results != nil {
+				count := 0
+				for _, param := range results.List {
+					if len(param.Names) == 0 {
+						count++
+						param.Names = []*ast.Ident{ast.NewIdent(fmt.Sprintf("return_%d_%s", count, s.UniqueString))}
+					} else {
+						for _, name := range param.Names {
+							count++
+							if name.Name == "_" {
+								name.Name = fmt.Sprintf("return_%d_%s", count, s.UniqueString)
+							}
+						}
+					}
+				}
+				c.Replace(node)
+			}
 		case ast.Stmt:
 			{
 				if info, ok := s.funcByBody[node]; ok {
 					s.logCallVariables(c, info)
+					s.logReturnVariables(c, info)
 					s.logCall(c, info)
 				}
 				if info, ok := s.forByBody[node]; ok {
@@ -233,10 +266,17 @@ func (s *Xtrace) IdentShowGoroutine() string {
 type FuncInfo struct {
 	Body     *ast.BlockStmt
 	FuncDecl *ast.FuncDecl
+	FuncLit  *ast.FuncLit
 }
 
 func (i FuncInfo) Signature() (begin, end token.Pos) {
-	return i.FuncDecl.Pos(), i.FuncDecl.Body.Pos()
+	if i.FuncDecl != nil {
+		return i.FuncDecl.Pos(), i.FuncDecl.Body.Pos()
+	}
+	if i.FuncLit != nil {
+		return i.FuncLit.Pos(), i.FuncLit.Body.Pos()
+	}
+	panic("FuncInfo must consist of one of *ast.FuncDecl or *ast.FuncLit.")
 }
 
 func CollectFuncInfo(f *ast.File) (funcByBody map[ast.Stmt]*FuncInfo) {
@@ -248,6 +288,13 @@ func CollectFuncInfo(f *ast.File) (funcByBody map[ast.Stmt]*FuncInfo) {
 				funcByBody[node.Body] = &FuncInfo{
 					Body:     node.Body,
 					FuncDecl: node,
+				}
+			}
+		case *ast.FuncLit:
+			if node.Body != nil {
+				funcByBody[node.Body] = &FuncInfo{
+					Body:    node.Body,
+					FuncLit: node,
 				}
 			}
 		}

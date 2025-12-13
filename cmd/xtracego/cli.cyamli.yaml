@@ -2,6 +2,12 @@
 name: xtracego
 version: v0.0.7
 options:
+  -help:
+    type: boolean
+    short: -h
+    propagates: true
+    description: |
+      Prints help message.
   -verbose:
     type: boolean
     short: -v
@@ -117,6 +123,11 @@ subcommands:
       Executes go build at the temporary directory with the given arguments.
       Thereafter, the built executable file is executed at the current working directory.
     options:
+      -width:
+        short: -w
+        type: integer
+        description: |
+          Terminal width to be used for formatting trace messages.
       -go-build-arg:
         short: -a
         repeated: true
