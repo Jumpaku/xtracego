@@ -317,7 +317,7 @@ func (h *cliHandler) saveGoModFile(cfg internal.Config, outDir string) {
 	panicIf(cfg.ResolveType != internal.ResolveType_CommandLineArguments, "go.mod is not required")
 
 	h.logf("[add] %s", dst)
-	err := internal.SaveFile(dst, fmt.Sprintf(`module %s`, cfg.UniqueString))
+	err := internal.SaveFile(dst, fmt.Sprintf(`module xtracego_tmp_%s`, cfg.UniqueString))
 	panicIfError(err, "failed to save go.mod file")
 }
 

@@ -92,6 +92,6 @@ func (i *injector) GenerateLogger(dst io.Writer) (err error) {
 }
 
 func (i *injector) GenerateGoMod(dst io.Writer) (err error) {
-	_, err = dst.Write([]byte(fmt.Sprintf(`module %s`, i.cfg.UniqueString)))
+	_, err = dst.Write([]byte(fmt.Sprintf(`module xtracego_tmp_%s`, i.cfg.UniqueString)))
 	return err
 }
