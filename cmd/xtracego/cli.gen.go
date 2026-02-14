@@ -1312,7 +1312,7 @@ func parseValue(typ string, strValue ...string) (dst any, err error) {
 }
 
 func GetVersion() string {
-	return "v0.0.9"
+	return "v0.0.10"
 }
 func GetProgram() string {
 	return "xtracego"
