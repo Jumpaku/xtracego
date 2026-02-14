@@ -1,44 +1,44 @@
 2026-02-14T02:52:12Z [ 1] main.main: [CALL] func main()
-2026-02-14T02:52:12Z [ 1] main.main:     var x, y int64 = 664, 576 -------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:9:2
+2026-02-14T02:52:12Z [ 1] main.main:     var x, y int64 = 664, 576 -------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:9:2
 2026-02-14T02:52:12Z [ 1] main.main: [VAR] x=664
 2026-02-14T02:52:12Z [ 1] main.main: [VAR] y=576
-2026-02-14T02:52:12Z [ 1] main.main:     fmt.Println(gcd(x, y)) ---------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:10:2
+2026-02-14T02:52:12Z [ 1] main.main:     fmt.Println(gcd(x, y)) ---------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:10:2
 2026-02-14T02:52:12Z [ 1] main.gcd: [CALL] func gcd(a, b int64) int64
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] a=664
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] b=576
-2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:14:2
-2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:17:2
-2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:18:3
+2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:14:2
+2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:17:2
+2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:18:3
 2026-02-14T02:52:12Z [ 1] main.gcd: [CALL] func gcd(a, b int64) int64
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] a=576
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] b=88
-2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:14:2
-2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:17:2
-2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:18:3
+2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:14:2
+2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:17:2
+2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:18:3
 2026-02-14T02:52:12Z [ 1] main.gcd: [CALL] func gcd(a, b int64) int64
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] a=88
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] b=48
-2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:14:2
-2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:17:2
-2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:18:3
+2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:14:2
+2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:17:2
+2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:18:3
 2026-02-14T02:52:12Z [ 1] main.gcd: [CALL] func gcd(a, b int64) int64
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] a=48
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] b=40
-2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:14:2
-2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:17:2
-2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:18:3
+2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:14:2
+2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:17:2
+2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:18:3
 2026-02-14T02:52:12Z [ 1] main.gcd: [CALL] func gcd(a, b int64) int64
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] a=40
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] b=8
-2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:14:2
-2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:17:2
-2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:18:3
+2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:14:2
+2026-02-14T02:52:12Z [ 1] main.gcd:     default: ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:17:2
+2026-02-14T02:52:12Z [ 1] main.gcd:         return gcd(b, a%b) ----------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:18:3
 2026-02-14T02:52:12Z [ 1] main.gcd: [CALL] func gcd(a, b int64) int64
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] a=8
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] b=0
-2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:14:2
-2026-02-14T02:52:12Z [ 1] main.gcd:     case b == 0: --------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:15:2
-2026-02-14T02:52:12Z [ 1] main.gcd:         return a --------------------------------------------------------------------------------------- /Users/jumpaku/Documents/xtracego/examples/gcd/main.go:16:3
+2026-02-14T02:52:12Z [ 1] main.gcd:     switch { ------------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:14:2
+2026-02-14T02:52:12Z [ 1] main.gcd:     case b == 0: --------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:15:2
+2026-02-14T02:52:12Z [ 1] main.gcd:         return a --------------------------------------------------------------------------------------- /xtracego/examples/gcd/main.go:16:3
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] <return_1>=8
 2026-02-14T02:52:12Z [ 1] main.gcd: [RETURN] func gcd(a, b int64) int64
 2026-02-14T02:52:12Z [ 1] main.gcd: [VAR] <return_1>=8
