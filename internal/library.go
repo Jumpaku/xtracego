@@ -88,7 +88,7 @@ func PrintlnCall_{{.UniqueString}}(width int, signature string, showTimestamp, s
 
 func PrintlnReturn_{{.UniqueString}}(width int, signature string, showTimestamp, showGoroutine bool) {
 	prefix := getPrefix(3, showTimestamp, showGoroutine)
-	returnStr := prefix + "[CALL] " + signature
+	returnStr := prefix + "[RETURN] " + signature
 	if len(returnStr) >= width {
 		returnStr = returnStr[:width-4] + " ..."
 	}

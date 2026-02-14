@@ -3,15 +3,11 @@
 ## fizzbuzz
 
 ```shell
-xtracego run ./fizzbuzz/main.go
+xtracego run ./fizzbuzz/main.go 2> fizzbuzz/stderr.txt 1> fizzbuzz/stdout.txt
 ```
-
-Example output can be found fizzbuzz/output.txt.
 
 ## gcd
 
 ```shell
-xtracego run ./gcd/main.go
+xtracego run ./gcd/main.go 2> gcd/stderr.txt 1> gcd/stdout.txt
 ```
-
-Example output can be found gcd/output.txt.

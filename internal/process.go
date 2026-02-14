@@ -34,14 +34,11 @@ func ProcessCode(config Config, filename string, src []byte) (dst []byte, err er
 		switch node := c.Node().(type) {
 		case *ast.GenDecl:
 			switch node.Tok {
-			case token.VAR:
+			case token.VAR, token.CONST:
 				if _, isFile := c.Parent().(*ast.File); isFile {
 					x.logFileStatement(c, node)
 					x.logFileVariable(c, node)
 				}
-			case token.CONST:
-				x.logFileStatement(c, node)
-				x.logFileVariable(c, node)
 			}
 		case *ast.FuncLit, *ast.FuncDecl:
 			var results *ast.FieldList
@@ -91,7 +88,7 @@ func ProcessCode(config Config, filename string, src []byte) (dst []byte, err er
 
 			switch node := node.(type) {
 			case *ast.DeclStmt:
-				if decl, ok := node.Decl.(*ast.GenDecl); ok && decl.Tok == token.VAR {
+				if decl, ok := node.Decl.(*ast.GenDecl); ok && (decl.Tok == token.VAR || decl.Tok == token.CONST) {
 					x.logLocalVariable(c, node)
 				}
 			case *ast.AssignStmt:

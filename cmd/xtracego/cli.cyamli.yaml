@@ -1,6 +1,6 @@
 #$schema: https://raw.githubusercontent.com/Jumpaku/cyamli/refs/heads/main/v2/schema/cyamli-cli.schema.json
 name: xtracego
-version: v0.0.9
+version: v0.0.10
 options:
   -help:
     type: boolean
